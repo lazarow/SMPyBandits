@@ -52,12 +52,12 @@ __version__ = "0.9"
 import os
 from linecache import getline
 
-try:
-    import resource
-except ImportError as e:
-    print("ERROR: 'resource' module not available, but it is in the standard library.\nHave you messed up your Python installation?\nPlease submit a new bug on https://github.com/SMPyBandits/SMPyBandits/issues/new")  # DEBUG
-    raise e
-
+if os.name != 'nt':
+    try:
+        import resource
+    except ImportError as e:
+        print("ERROR: 'resource' module not available, but it is in the standard library.\nHave you messed up your Python installation?\nPlease submit a new bug on https://github.com/SMPyBandits/SMPyBandits/issues/new")  # DEBUG
+        raise e
 
 def getCurrentMemory(thread=False, both=False):
     """ Get the current memory consumption of the process, or the thread.
@@ -83,6 +83,8 @@ def getCurrentMemory(thread=False, both=False):
 
     .. warning:: FIXME even on my own system,, it works for the *last* few policies I test, but fails for the first??
     """
+    if os.name == 'nt':
+        return 2048
     if thread:
         try:
             # https://docs.python.org/3/library/resource.html#resource.RUSAGE_THREAD

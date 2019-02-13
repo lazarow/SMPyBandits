@@ -22,4 +22,11 @@ NOPLOTS=True N=100 T=5000 python main.py configuration_tspol
 
 ## Windows
 
-todo.
+Na Windows nie działają `symlinks` stąd skopiowałem treści plików `with_proba.py`, `kullback.py` oraz `usenumba.py`.
+
+```
+virtualenv -p python3 .
+Scripts\activate.bat
+pip install -r requirements.txt
+pip install usejoblib
+```

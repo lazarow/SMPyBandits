@@ -63,3 +63,6 @@ nbproject
 /share
 /include
 /SMPyBandits/plots
+/Scripts
+/tcl
+pip-selfcheck.json
