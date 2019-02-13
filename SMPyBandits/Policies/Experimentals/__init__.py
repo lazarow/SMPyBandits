@@ -36,10 +36,10 @@ try:
 except:
     print("Warning: the 'UCBcython' module failed to be imported. Maybe there is something wrong with your installation of Cython?")  # DEBUG
     try:
-        from .UCB import UCB as UCBcython
+        from .UCBalpha import UCBalpha as UCBcython
     except ImportError:
         import sys; sys.path.insert(0, '..')
-        from UCB import UCB as UCBcython
+        from UCBalpha import UCBalpha as UCBcython
 
 # --- Thompson sampling index policy
 from .ThompsonRobust import ThompsonRobust

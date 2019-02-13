@@ -883,6 +883,7 @@ configuration.update({
             "archtype": SubGaussianGLR_IndexPolicy,
             "params": { "horizon": HORIZON, "policy": UCB, "per_arm_restart": True, "max_nb_random_events": 1 }
         },
+        {"archtype": TSPol2, "params": {} }
     ]
 })
 
