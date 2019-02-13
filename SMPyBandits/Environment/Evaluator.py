@@ -713,7 +713,7 @@ class Evaluator(object):
             if self.repetitions <= 1:
                 print(u"    {} (mean of 1 run)" .format(_format_time(mean_time, precision)))
             else:
-                print(u"    {} ± {} per loop (mean ± std. dev. of {} run)" .format(_format_time(mean_time, precision), _format_time(var_time, precision), self.repetitions))
+                print(u"    {} ± {} per loop (mean ± std. dev. of {} run)" .format(_format_time(mean_time), _format_time(var_time), self.repetitions))
         # table_to_latex(mean_data=means, std_data=stds, labels=[policy.__cachedstr__ for policy in self.policies], fmt_function=_format_time)
 
     def plotRunningTimes(self, envId=0, savefig=None, base=1, unit="seconds"):
