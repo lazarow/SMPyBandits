@@ -113,10 +113,10 @@ configuration = {
     "cache_rewards": False,
     # --- Arms
     "environment": [
-        #{
-        #    "arm_type": Bernoulli,
-        #    "params": [0.6, 0.55, 0.4]
-        #},
+        {
+            "arm_type": Bernoulli,
+            "params": [0.6, 0.55, 0.4]
+        },
         {
             "arm_type": Bernoulli,
             "params": [0.5, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4, 0.4]
