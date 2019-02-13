@@ -151,6 +151,13 @@ configuration.update({
                 "posterior": Beta,
             }
         },
+        {
+            "archtype": AdBandits,
+            "params": {
+                "alpha": 0.5,
+                "horizon": HORIZON,
+            }
+        },
         {"archtype": TSPol, "params": {} },
         {"archtype": TSPol2, "params": {} }
     ]
