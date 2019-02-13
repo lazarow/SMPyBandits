@@ -13,8 +13,12 @@ np.seterr(divide='ignore')  # XXX dangerous in general, controlled here!
 
 # WARNING: this is a HUGE hack to fix a mystery bug on importing this policy
 from sys import path
+import os
 from os.path import dirname
-path.insert(0, '/'.join(dirname(__file__).split('/')[:-1]))
+if os.name == 'nt':
+    path.insert(0, '\\'.join(dirname(__file__).split('\\')[:-1]))
+else:
+    path.insert(0, '/'.join(dirname(__file__).split('/')[:-1]))
 
 try:
     from .IndexPolicy import IndexPolicy

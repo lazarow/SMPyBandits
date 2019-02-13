@@ -29,4 +29,12 @@ virtualenv -p python3 .
 Scripts\activate.bat
 pip install -r requirements.txt
 pip install usejoblib
+pip install cython
+pip install h5py
+pip install numba
+```
+
+```
+set NOPLOTS=True&& set N=100 && set T=5000 && set N_JOBS=8 && python main.py configuration_tspol
+set NOPLOTS=True&& set N=1 && set T=50 && set N_JOBS=1 && python main.py configuration_tspol
 ```
