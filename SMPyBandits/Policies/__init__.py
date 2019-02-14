@@ -73,7 +73,6 @@ from .BaseWrapperPolicy import BaseWrapperPolicy
 from .Posterior import Beta, Gamma, Gauss, DiscountedBeta
 
 from .TSPol import TSPol
-from .TSPol2 import TSPol2
 
 # --- Mine, uniform ones or fixed arm / fixed subset ones
 from .Uniform import Uniform

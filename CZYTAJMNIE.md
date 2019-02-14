@@ -5,13 +5,9 @@ Niezależnie czy korzystałem z Windows-a czy Lubuntu zawsze korzystałem z Pyth
 ```
 virtualenv -p python3 .
 source ./bin/activate
-pip install -r requirements.txt
 apt-get install python3-tk
 apt-get install python3-dev
-pip install cython
-pip install joblib
-pip install h5py
-pip install numba
+pip install -r requirements.txt && pip install cython && pip install joblib && pip install h5py && pip install numba
 ```
 
 ```
@@ -27,11 +23,7 @@ Na Windows nie działają `symlinks` stąd skopiowałem treści plików `with_pr
 ```
 virtualenv -p python3 .
 Scripts\activate.bat
-pip install -r requirements.txt
-pip install usejoblib
-pip install cython
-pip install h5py
-pip install numba
+pip install -r requirements.txt && pip install usejoblib && pip install cython && pip install h5py && pip install numba
 ```
 
 ```

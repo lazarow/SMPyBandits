@@ -232,6 +232,7 @@ klucb = klucb_mapping.get(str(configuration['environment'][0]['arm_type']), kluc
 
 configuration.update({
     "policies": [
+        {"archtype": TSPol, "params": {} },
         # --- Stupid algorithms
         {
             "archtype": Uniform,   # The stupidest policy, fully uniform
@@ -882,8 +883,7 @@ configuration.update({
         {
             "archtype": SubGaussianGLR_IndexPolicy,
             "params": { "horizon": HORIZON, "policy": UCB, "per_arm_restart": True, "max_nb_random_events": 1 }
-        },
-        {"archtype": TSPol2, "params": {} }
+        }
     ]
 })
 

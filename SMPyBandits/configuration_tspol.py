@@ -158,8 +158,7 @@ configuration.update({
                 "horizon": HORIZON,
             }
         },
-        {"archtype": TSPol, "params": {} },
-        {"archtype": TSPol2, "params": {} }
+        {"archtype": TSPol, "params": {} }
     ]
 })
 
