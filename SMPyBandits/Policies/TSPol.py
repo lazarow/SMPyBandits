@@ -34,7 +34,10 @@ class TSPol(object):
             for i in range(self.nbArms):
                 if mean is None or mean < self.rewards[i] / self.pulls[i]:
                     # normal approximation interval
-                    mean = self.rewards[i] / self.pulls[i] + self.z / self.pulls[i] * math.sqrt(self.rewards[i] * (self.pulls[i] - self.rewards[i]) / self.pulls[i])
+                    #mean = self.rewards[i] / self.pulls[i] + self.z / self.pulls[i] * math.sqrt(self.rewards[i] * (self.pulls[i] - self.rewards[i]) / self.pulls[i])
+                    # Wilson score interval
+                    z2 = self.z * self.z
+                    mean = (self.rewards[i] + z2 / 2) / (self.pulls[i] + z2) + self.z / (self.pulls[i] + z2) * math.sqrt((self.pulls[i] - self.rewards[i]) / self.pulls[i] + z2 / 4)
                     arm = i
             if self.defeated[arm]:
                 self.defeated[arm] = False

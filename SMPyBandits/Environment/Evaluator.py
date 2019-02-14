@@ -872,7 +872,7 @@ class Evaluator(object):
             ax0.tick_params(labelcolor='none', top=False, bottom=False, left=False, right=False)  # hide tick and tick label of the big axes
             # Add only once the ylabel, xlabel, in the middle
             ax0.set_ylabel("{} obserwacji, ${}$ powtórzeń".format("Częstotliwość" if normed else "Histogram i gęstość", self.repetitions))
-            ax0.set_xlabel("Regret value $R_T$, horizon $T = {}${}".format(self.horizon, self.signature))
+            ax0.set_xlabel("Wartość straty $R_T$, liczba iteracji $T = {}${}".format(self.horizon, self.signature))
             for policyId, policy in enumerate(self.policies):
                 i, j = policyId % nrows, policyId // nrows
                 ax = axes[i, j] if ncols > 1 else axes[i]
