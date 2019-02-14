@@ -853,9 +853,9 @@ class Evaluator(object):
             figs = []
             for policyId, policy in enumerate(self.policies):
                 fig = plt.figure()
-                plt.title("Histogram of regrets for {}\n${}$ arms{}: {}".format(policy.__cachedstr__, self.envs[envId].nbArms, self.envs[envId].str_sparsity(), self.envs[envId].reprarms(1, latex=True)))
-                plt.xlabel("Regret value $R_T$, horizon $T = {}${}".format(self.horizon, self.signature))
-                plt.ylabel("{} of observations, ${}$ repetitions".format("Frequency" if normed else "Number", self.repetitions))
+                plt.title("Histogram straty dla {}\n${}$ ramion(a){}: {}".format(policy.__cachedstr__, self.envs[envId].nbArms, self.envs[envId].str_sparsity(), self.envs[envId].reprarms(1, latex=True)))
+                plt.xlabel("Wartość straty $R_T$, liczba iteracji $T = {}${}".format(self.horizon, self.signature))
+                plt.ylabel("{} obserwacji, ${}$ powtórzeń".format("Częstotliwość" if normed else "Liczba", self.repetitions))
                 last_regrets = self.getLastRegrets(policyId, envId=envId, moreAccurate=moreAccurate)
                 sns.distplot(last_regrets, hist=True, bins=nbbins, color=colors[policyId], kde_kws={'cut': 0, 'marker': markers[policyId], 'markevery': (policyId / 50., 0.1)})
                 legend()
@@ -865,13 +865,13 @@ class Evaluator(object):
         elif subplots:
             nrows, ncols = nrows_ncols(N)
             fig, axes = plt.subplots(nrows, ncols, sharex=sharex, sharey=sharey)
-            fig.suptitle("Histogram of regrets for different bandit algorithms\n${}$ arms{}: {}".format(self.envs[envId].nbArms, self.envs[envId].str_sparsity(), self.envs[envId].reprarms(1, latex=True)))
+            fig.suptitle("Histogram straty dla różnych algorytmów\n${}$ ramion(a){}: {}".format(self.envs[envId].nbArms, self.envs[envId].str_sparsity(), self.envs[envId].reprarms(1, latex=True)))
             # XXX See https://stackoverflow.com/a/36542971/
             ax0 = fig.add_subplot(111, frame_on=False)  # add a big axes, hide frame
             ax0.grid(False)  # hide grid
             ax0.tick_params(labelcolor='none', top=False, bottom=False, left=False, right=False)  # hide tick and tick label of the big axes
             # Add only once the ylabel, xlabel, in the middle
-            ax0.set_ylabel("{} of observations, ${}$ repetitions".format("Frequency" if normed else "Histogram and density", self.repetitions))
+            ax0.set_ylabel("{} obserwacji, ${}$ powtórzeń".format("Częstotliwość" if normed else "Histogram i gęstość", self.repetitions))
             ax0.set_xlabel("Regret value $R_T$, horizon $T = {}${}".format(self.horizon, self.signature))
             for policyId, policy in enumerate(self.policies):
                 i, j = policyId % nrows, policyId // nrows
@@ -882,9 +882,9 @@ class Evaluator(object):
                 ax.tick_params(axis='both', labelsize=8)  # XXX https://stackoverflow.com/a/11386056/
         else:
             fig = plt.figure()
-            plt.title("Histogram of regrets for different bandit algorithms\n${}$ arms{}: {}".format(self.envs[envId].nbArms, self.envs[envId].str_sparsity(), self.envs[envId].reprarms(1, latex=True)))
-            plt.xlabel("Regret value $R_T$, horizon $T = {}${}".format(self.horizon, self.signature))
-            plt.ylabel("{} of observations, ${}$ repetitions".format("Frequency" if normed else "Number", self.repetitions))
+            plt.title("Histogram straty dla różnych algorytmów\n${}$ ramion(a){}: {}".format(self.envs[envId].nbArms, self.envs[envId].str_sparsity(), self.envs[envId].reprarms(1, latex=True)))
+            plt.xlabel("Wartość straty $R_T$, liczba iteracji $T = {}${}".format(self.horizon, self.signature))
+            plt.ylabel("{} obserwacji, ${}$ powtórzeń".format("Częstotliwość" if normed else "Liczba", self.repetitions))
             all_last_regrets = []
             labels = []
             for policyId, policy in enumerate(self.policies):
