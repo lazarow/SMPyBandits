@@ -15,7 +15,7 @@ class TSPol(object):
         random.seed()
 
     def __str__(self):
-        return "TSPol2(alpha=" + str(self.alpha) + ")"
+        return "TSPol(alpha=" + str(self.alpha) + ",z=" + str(self.z) + ")"
 
     def startGame(self):
         pass
