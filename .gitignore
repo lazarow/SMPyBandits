@@ -55,6 +55,8 @@ venv/
 venv3/
 venv2/
 /nbproject/private/
+/Lib
+/Include
 
 nbproject
 /bin

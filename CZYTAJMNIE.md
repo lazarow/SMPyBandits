@@ -23,7 +23,7 @@ Na Windows nie działają `symlinks` stąd skopiowałem treści plików `with_pr
 ```
 virtualenv -p python3 .
 Scripts\activate.bat
-pip install -r requirements.txt && pip install usejoblib && pip install cython && pip install h5py && pip install numba
+pip install -r requirements.txt && pip install joblib && pip install cython && pip install h5py && pip install numba
 ```
 
 ```

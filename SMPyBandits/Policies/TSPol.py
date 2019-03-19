@@ -3,7 +3,7 @@ import math
 
 # with binomial interval
 class TSPol(object):
-    def __init__(self, nbArms, alpha=0.02, z=1.96, *args, **kwargs):
+    def __init__(self, nbArms, alpha=0.01, z=1.96, *args, **kwargs):
         self.nbArms = nbArms
         self.alpha = alpha
         self.z = z
