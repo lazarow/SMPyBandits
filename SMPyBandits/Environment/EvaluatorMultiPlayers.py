@@ -10,6 +10,7 @@ __version__ = "0.9"
 # Generic imports
 import sys
 import pickle
+USE_PICKLE = False   #: Should we save the figure objects to a .pickle file at the end of the simulation?
 from copy import deepcopy
 from re import search
 import random
@@ -36,7 +37,7 @@ try:
     from .fairnessMeasures import amplitude_fairness, std_fairness, rajjain_fairness, mean_fairness, fairnessMeasure, fairness_mapping
     # Local imports, objects and functions
     from .CollisionModels import onlyUniqUserGetsReward, noCollision, closerUserGetsReward, rewardIsSharedUniformly, defaultCollisionModel, full_lost_if_collision
-    from .MAB import MAB, MarkovianMAB, ChangingAtEachRepMAB
+    from .MAB import MAB, MarkovianMAB, ChangingAtEachRepMAB, NonStationaryMAB, PieceWiseStationaryMAB, IncreasingMAB
     from .ResultMultiPlayers import ResultMultiPlayers
     from .memory_consumption import getCurrentMemory, sizeof_fmt
 except ImportError:
@@ -48,7 +49,7 @@ except ImportError:
     from fairnessMeasures import amplitude_fairness, std_fairness, rajjain_fairness, mean_fairness, fairnessMeasure, fairness_mapping
     # Local imports, objects and functions
     from CollisionModels import onlyUniqUserGetsReward, noCollision, closerUserGetsReward, rewardIsSharedUniformly, defaultCollisionModel, full_lost_if_collision
-    from MAB import MAB, MarkovianMAB, ChangingAtEachRepMAB
+    from MAB import MAB, MarkovianMAB, ChangingAtEachRepMAB, NonStationaryMAB, PieceWiseStationaryMAB, IncreasingMAB
     from ResultMultiPlayers import ResultMultiPlayers
     from memory_consumption import getCurrentMemory, sizeof_fmt
 
@@ -63,9 +64,11 @@ plot_lowerbounds = True  #: Default is to plot the lower-bounds
 
 USE_BOX_PLOT = True  #: True to use boxplot, False to use violinplot (default).
 
+nb_break_points = 0  #: Default nb of random events
+
+
 FINAL_RANKS_ON_AVERAGE = True  #: Default value for ``finalRanksOnAverage``
 USE_JOBLIB_FOR_POLICIES = False  #: Default value for ``useJoblibForPolicies``. Does not speed up to use it (too much overhead in using too much threads); so it should really be disabled.
-PICKLE_IT = True  #: Default value for ``pickleit`` for saving the figures. If True, then all ``plt.figure`` object are saved (in pickle format).
 
 # --- Class EvaluatorMultiPlayers
 
@@ -97,9 +100,11 @@ class EvaluatorMultiPlayers(object):
         print("Using accurate regrets and last regrets ? {}".format(moreAccurate))
         self.finalRanksOnAverage = self.cfg.get('finalRanksOnAverage', FINAL_RANKS_ON_AVERAGE)  #: Final display of ranks are done on average rewards?
         self.averageOn = self.cfg.get('averageOn', 5e-3)  #: How many last steps for final rank average rewards
+        self.nb_break_points = self.cfg.get('nb_break_points', nb_break_points)  #: How many random events?
         self.plot_lowerbounds = self.cfg.get('plot_lowerbounds', plot_lowerbounds)  #: Should we plot the lower-bounds?
         self.useJoblib = USE_JOBLIB and self.cfg['n_jobs'] != 1  #: Use joblib to parallelize for loop on repetitions (useful)
         self.showplot = self.cfg.get('showplot', True)  #: Show the plot (interactive display or not)
+        self.use_box_plot = USE_BOX_PLOT or (self.repetitions == 1)  #: To use box plot (or violin plot if False). Force to use boxplot if repetitions=1.
         self.count_ranks_markov_chain = self.cfg.get('count_ranks_markov_chain', COUNT_RANKS_MARKOV_CHAIN)#: If true, count and then print a lot of statistics for the Markov Chain of the underlying configurations on ranks
 
         self.change_labels = self.cfg.get('change_labels', {})  #: Possibly empty dictionary to map 'playerId' to new labels (overwrite their name).
@@ -125,7 +130,7 @@ class EvaluatorMultiPlayers(object):
         self.memoryConsumption = dict()  #: For each env, keep the history of running times
 
         print("Number of environments to try:", len(self.envs))  # DEBUG
-        # XXX: WARNING no memorized vectors should have dimension duration * repetitions, that explodes the RAM consumption!
+        # XXX: WARNING no memorized vectors should have dimension horizon * repetitions, that explodes the RAM consumption!
         for envId in range(len(self.envs)):  # Zeros everywhere
             self.rewards[envId] = np.zeros((self.nbPlayers, self.horizon))
             # self.rewardsSquared[envId] = np.zeros((self.nbPlayers, self.horizon))
@@ -149,19 +154,32 @@ class EvaluatorMultiPlayers(object):
         """ Create environments."""
         nbArms = []
         for configuration_arms in self.cfg['environment']:
+            print("Using this dictionary to create a new environment:\n", configuration_arms)  # DEBUG
+            new_mab_problem = None
             if isinstance(configuration_arms, dict) \
-                and "arm_type" in configuration_arms and "params" in configuration_arms \
-                and "function" in configuration_arms["params"] and "args" in configuration_arms["params"]:
-                    MB = ChangingAtEachRepMAB(configuration_arms)
-            elif isinstance(configuration_arms, dict) \
-                and "arm_type" in configuration_arms and configuration_arms["arm_type"] == "Markovian" \
-                and "params" in configuration_arms \
-                and "transitions" in configuration_arms["params"]:
-                    self.envs.append(MarkovianMAB(configuration_arms))
-            else:
-                MB = MAB(configuration_arms)
-            self.envs.append(MB)
-            nbArms.append(MB.nbArms)
+                and "arm_type" in configuration_arms \
+                and "params" in configuration_arms:
+                # PieceWiseStationaryMAB or NonStationaryMAB or ChangingAtEachRepMAB
+                if "listOfMeans"  in configuration_arms["params"] \
+                    and "changePoints" in configuration_arms["params"]:
+                        new_mab_problem = PieceWiseStationaryMAB(configuration_arms)
+                elif "newMeans" in configuration_arms["params"] \
+                    and "args" in configuration_arms["params"]:
+                    if "changePoints" in configuration_arms["params"]:
+                        new_mab_problem = NonStationaryMAB(configuration_arms)
+                    else:
+                        new_mab_problem = ChangingAtEachRepMAB(configuration_arms)
+                # MarkovianMAB
+                elif configuration_arms["arm_type"] == "Markovian" \
+                    and "transitions" in configuration_arms["params"]:
+                    new_mab_problem = MarkovianMAB(configuration_arms)
+                # IncreasingMAB
+                elif "change_lower_amplitude" in configuration_arms:
+                    new_mab_problem = IncreasingMAB(configuration_arms)
+            if new_mab_problem is None:
+                new_mab_problem = MAB(configuration_arms)
+            self.envs.append(new_mab_problem)
+            nbArms.append(new_mab_problem.nbArms)
         if len(set(nbArms)) != 1:  # FIXME add support of multi-environments evaluator for MP policies with different number of arms in the scenarios.
             raise ValueError("ERROR: right now, the multi-environments evaluator does not work well for MP policies, if there is a number different of arms in the scenarios!")
 
@@ -198,6 +216,7 @@ class EvaluatorMultiPlayers(object):
         # Get the position of the best arms
         means = env.means
         bestarm = env.maxArm
+        # FIXME for > 1 player, this has no meaning
         indexes_bestarm = np.nonzero(np.isclose(means, bestarm))[0]
 
         def store(r, repeatId):
@@ -250,7 +269,7 @@ class EvaluatorMultiPlayers(object):
         # 2. store main attributes and all other attributes, if they exist
         for name_of_attr in [
                 "nbPlayers", "horizon", "repetitions",
-                "delta_t_plot", "collisionModel", "full_lost_if_collision", "signature", "plot_lowerbound", "moreAccurate", "finalRanksOnAverage", "useJoblib", "showplot", "count_ranks_markov_chain", "cache_rewards", "showplot", "change_labels", "append_labels"
+                "delta_t_plot", "collisionModel", "full_lost_if_collision", "signature",  "nb_break_points", "plot_lowerbounds", "moreAccurate", "finalRanksOnAverage", "useJoblib", "showplot", "use_box_plot", "count_ranks_markov_chain", "cache_rewards", "change_labels", "append_labels"
             ]:
             if not hasattr(self, name_of_attr): continue
             value = getattr(self, name_of_attr)
@@ -358,64 +377,72 @@ class EvaluatorMultiPlayers(object):
         return self.rewards[envId][playerId, :] / float(self.repetitions)
 
     def getRegretMean(self, playerId, envId=0):
-        """Extract mean of regret
+        """Extract mean of regret, for one arm for one player (no meaning).
 
-        .. warning:: This is the centralized regret, for one arm, it does not make much sense in the multi-players setting!
+        .. warning:: This is the centralized regret, *for one arm*, it does not make much sense in the multi-players setting!
         """
-        return (self._times - 1) * self.envs[envId].maxArm - self.getRewards(playerId, envId)
+        return np.cumsum(self.envs[envId].get_maxArm(self.horizon) - self.getRewards(playerId, envId))
 
     def getCentralizedRegret_LessAccurate(self, envId=0):
         """Compute the empirical centralized regret: cumsum on time of the mean rewards of the M best arms - cumsum on time of the empirical rewards obtained by the players, based on accumulated rewards."""
-        meansArms = np.sort(self.envs[envId].means)
-        sumBestMeans = self.envs[envId].sumBestMeans(self.nbPlayers)
-        # FIXED how to count it when there is more players than arms ?
-        # FIXME it depends on the collision model !
-        if self.envs[envId].nbArms < self.nbPlayers:
-            # sure to have collisions, then the best strategy is to put all the collisions in the worse arm
-            worseArm = np.min(meansArms)
-            sumBestMeans -= worseArm  # This count the collisions
-        averageBestRewards = self._times * sumBestMeans
+        assert self.nbPlayers <= self.envs[envId].nbArms, "WARNING getCentralizedRegret_LessAccurate is not yet implement in the case when there is more players than arms ?"  # DEBUG
+        # FIXED use self.envs[envId].get_maxArms(M=self.nbPlayers, horizon=self.horizon)
+        averageBestRewards = np.cumsum(self.envs[envId].get_maxArms(M=self.nbPlayers, horizon=self.horizon))
         # And for the actual rewards, the collisions are counted in the rewards logged in self.getRewards
-        actualRewards = np.sum(self.rewards[envId][:, :], axis=0) / float(self.repetitions)
+        actualRewards = np.sum([self.getRewards(playerId, envId=0) for playerId in range(self.nbPlayers)], axis=0)
         return averageBestRewards - actualRewards
 
     # --- Three terms in the regret
 
     def getFirstRegretTerm(self, envId=0):
         """Extract and compute the first term :math:`(a)` in the centralized regret: losses due to pulling suboptimal arms."""
-        means = self.envs[envId].means
-        sortingIndex = np.argsort(means)
-        means = np.sort(means)
-        deltaMeansWorstArms = means[-self.nbPlayers] - means[:-self.nbPlayers]
-        allPulls = self.allPulls[envId] / float(self.repetitions)  # Shape: (nbPlayers, nbArms, duration)
-        allWorstPulls = allPulls[:, sortingIndex[:-self.nbPlayers], :]
-        worstPulls = np.sum(allWorstPulls, axis=0)  # sum for all players
-        losses = np.dot(deltaMeansWorstArms, worstPulls)  # Count and sum on k in Mworst
+        losses = np.zeros(self.horizon)
+        # means = self.envs[envId].means   # Shape: (nbArms)
+        allMeans = self.envs[envId].get_allMeans(self.horizon)   # Shape: (nbArms, horizon)
+        allPulls = self.allPulls[envId] / float(self.repetitions)  # Shape: (nbPlayers, nbArms, horizon)
+        # it's hard to program this in vector operations, so let's do just a loop...
+        for t in range(self.horizon):
+            means = allMeans[:, t]
+            sortingIndex = np.argsort(means)
+            means = np.sort(means)
+            deltaMeansWorstArms = means[-self.nbPlayers] - means[:-self.nbPlayers]
+            allWorstPulls = allPulls[:, sortingIndex[:-self.nbPlayers], t]
+            worstPulls = np.sum(allWorstPulls, axis=0)  # sum for all players
+            losses[t] = np.dot(deltaMeansWorstArms, worstPulls)  # Count and sum on k in Mworst
+        # Conclusion
         firstRegretTerm = np.cumsum(losses)  # Accumulate losses
         return firstRegretTerm
 
     def getSecondRegretTerm(self, envId=0):
         """Extract and compute the second term :math:`(b)` in the centralized regret: losses due to not pulling optimal arms."""
-        means = self.envs[envId].means
-        sortingIndex = np.argsort(means)
-        means = np.sort(means)
-        deltaMeansBestArms = means[-self.nbPlayers:] - means[-self.nbPlayers]
-        allPulls = self.allPulls[envId] / float(self.repetitions)  # Shape: (nbPlayers, nbArms, duration)
-        allBestPulls = allPulls[:, sortingIndex[-self.nbPlayers:], :]
-        bestMisses = 1 - np.sum(allBestPulls, axis=0)  # sum for all players
-        losses = np.dot(deltaMeansBestArms, bestMisses)  # Count and sum on k in Mbest
+        losses = np.zeros(self.horizon)
+        # means = self.envs[envId].means   # Shape: (nbArms)
+        allMeans = self.envs[envId].get_allMeans(self.horizon)   # Shape: (nbArms, horizon)
+        allPulls = self.allPulls[envId] / float(self.repetitions)  # Shape: (nbPlayers, nbArms, horizon)
+        # it's hard to program this in vector operations, so let's do just a loop...
+        for t in range(self.horizon):
+            means = allMeans[:, t]
+            sortingIndex = np.argsort(means)
+            means = np.sort(means)
+            deltaMeansBestArms = means[-self.nbPlayers:] - means[-self.nbPlayers]
+            allBestPulls = allPulls[:, sortingIndex[-self.nbPlayers:], t]
+            bestMisses = 1 - np.sum(allBestPulls, axis=0)  # sum for all players
+            losses[t] = np.dot(deltaMeansBestArms, bestMisses)  # Count and sum on k in Mbest
+        # Conclusion
         secondRegretTerm = np.cumsum(losses)  # Accumulate losses
         return secondRegretTerm
 
     def getThirdRegretTerm(self, envId=0):
         """Extract and compute the third term :math:`(c)` in the centralized regret: losses due to collisions."""
-        means = self.envs[envId].means
-        countCollisions = self.collisions[envId]   # Shape: (nbArms, duration)
+        # means = self.envs[envId].means   # Shape: (nbArms)
+        allMeans = self.envs[envId].get_allMeans(self.horizon)   # Shape: (nbArms, horizon)
+        countCollisions = self.collisions[envId]   # Shape: (nbArms, horizon)
         if not self.full_lost_if_collision:
             print("Warning: the collision model ({}) does *not* yield a loss in communication when colliding (one user can communicate, or in average one user can communicate), so countCollisions -= 1 for the 3rd regret term ...".format(self.collisionModel.__name__))  # DEBUG
             countCollisions = np.maximum(0, countCollisions - 1)
-        losses = np.dot(means, countCollisions / float(self.repetitions))  # Count and sum on k in 1...K
-        thirdRegretTerm = np.cumsum(losses)  # Accumulate losses
+        # losses = np.dot(means, countCollisions / float(self.repetitions))  # Count and sum on k in 1...K
+        losses = np.sum(allMeans * countCollisions, axis=0) / float(self.repetitions)  # Count and sum on k in 1...K
+        thirdRegretTerm = losses  # Accumulate losses
         return thirdRegretTerm
 
     def getCentralizedRegret_MoreAccurate(self, envId=0):
@@ -435,36 +462,35 @@ class EvaluatorMultiPlayers(object):
 
     def getLastRegrets_LessAccurate(self, envId=0):
         """Extract last regrets, based on accumulated rewards."""
-        meansArms = np.sort(self.envs[envId].means)
-        sumBestMeans = self.envs[envId].sumBestMeans(self.nbPlayers)
-        # FIXED how to count it when there is more players than arms ?
         # FIXME it depends on the collision model !
-        if self.envs[envId].nbArms < self.nbPlayers:
-            # sure to have collisions, then the best strategy is to put all the collisions in the worse arm
-            worseArm = np.min(meansArms)
-            sumBestMeans -= worseArm  # This count the collisions
-        return self.horizon * sumBestMeans - self.lastCumRewards[envId]
+        assert self.nbPlayers <= self.envs[envId].nbArms, "WARNING getLastRegrets_LessAccurate is not yet implement in the case when there is more players than arms ?"  # DEBUG
+        sumBestMeans = np.sum(self.envs[envId].get_maxArms(M=self.nbPlayers, horizon=self.horizon))
+        # if self.envs[envId].nbArms < self.nbPlayers:
+        #     # sure to have collisions, then the best strategy is to put all the collisions in the worse arm
+        #     worseArm = np.min(meansArms)
+        #     sumBestMeans -= worseArm  # This count the collisions
+        return sumBestMeans - self.lastCumRewards[envId]
 
     def getAllLastWeightedSelections(self, envId=0):
         """Extract weighted count of selections."""
         all_last_weighted_selections = np.zeros(self.repetitions)
         lastCumCollisions = self.lastCumCollisions[envId]
-        for armId, mean in enumerate(self.envs[envId].means):
+        means = self.envs[envId].means   # Shape: (nbArms)
+        for armId, mean in enumerate(means):
             last_selections = np.sum(self.lastPulls[envId][:, armId, :], axis=0)  # sum on players
             all_last_weighted_selections += mean * (last_selections - lastCumCollisions[armId, :])
         return all_last_weighted_selections
 
     def getLastRegrets_MoreAccurate(self, envId=0):
         """Extract last regrets, based on counts of selections and not actual rewards."""
-        meansArms = np.sort(self.envs[envId].means)
-        sumBestMeans = self.envs[envId].sumBestMeans(self.nbPlayers)
-        # FIXED how to count it when there is more players than arms ?
         # FIXME it depends on the collision model !
-        if self.envs[envId].nbArms < self.nbPlayers:
-            # sure to have collisions, then the best strategy is to put all the collisions in the worse arm
-            worseArm = np.min(meansArms)
-            sumBestMeans -= worseArm  # This count the collisions
-        return self.horizon * sumBestMeans - self.getAllLastWeightedSelections(envId=envId)
+        assert self.nbPlayers <= self.envs[envId].nbArms, "WARNING getLastRegrets_MoreAccurate is not yet implement in the case when there is more players than arms ?"  # DEBUG
+        sumBestMeans = np.sum(self.envs[envId].get_maxArms(M=self.nbPlayers, horizon=self.horizon))
+        # if self.envs[envId].nbArms < self.nbPlayers:
+        #     # sure to have collisions, then the best strategy is to put all the collisions in the worse arm
+        #     worseArm = np.min(meansArms)
+        #     sumBestMeans -= worseArm  # This count the collisions
+        return sumBestMeans - self.getAllLastWeightedSelections(envId=envId)
 
     def getLastRegrets(self, envId=0, moreAccurate=None):
         """Using either the more accurate or the less accurate regret count."""
@@ -513,9 +539,13 @@ class EvaluatorMultiPlayers(object):
                 plt.plot(X[::self.delta_t_plot], Y[::self.delta_t_plot], label=label, color=colors[playerId], marker=markers[playerId], markevery=(playerId / 50., 0.1), lw=2)
         legend()
         plt.xlabel("Time steps $t = 1...T$, horizon $T = {}${}".format(self.horizon, self.signature))
-        plt.ylabel("Cumulative personal reward {}".format(r"$\sum_{k=1}^{%d} \mu_k\mathbb{E}_{%d}[T_k(t)]$" % (self.envs[envId].nbArms, self.repetitions) if moreAccurate else r"$\mathbb{E}_{%d}[r_t]$" % self.repetitions))
+        if self.nb_break_points > 0:
+            # DONE fix math formula in case of non stationary bandits
+            plt.ylabel("Cumulative personal reward {}".format(r"$\sum_{s=1}^{t} \sum_{k=1}^{%d} \mu_k(t) \mathbb{E}_{%d}[1(I(t)=k)]$" % (self.envs[envId].nbArms, self.repetitions) if moreAccurate else r"$\mathbb{E}_{%d}[r_t]$" % self.repetitions))
+        else:
+            plt.ylabel("Cumulative personal reward {}".format(r"$\sum_{k=1}^{%d} \mu_k\mathbb{E}_{%d}[T_k(t)]$" % (self.envs[envId].nbArms, self.repetitions) if moreAccurate else r"$\mathbb{E}_{%d}[r_t]$" % self.repetitions))
         plt.title("Multi-players $M = {}$ : Personal reward for each player, averaged ${}$ times\n${}$ arms{}: {}".format(self.nbPlayers, self.repetitions, self.envs[envId].nbArms, self.envs[envId].str_sparsity(), self.envs[envId].reprarms(self.nbPlayers, latex=True)))
-        show_and_save(self.showplot, savefig, fig=fig, pickleit=PICKLE_IT)
+        show_and_save(self.showplot, savefig, fig=fig, pickleit=USE_PICKLE)
         return fig
 
     def plotFairness(self, envId=0, savefig=None, semilogx=False, fairness="default", evaluators=()):
@@ -532,7 +562,7 @@ class EvaluatorMultiPlayers(object):
         for evaId, eva in enumerate(evaluators):
             label = eva.strPlayers(short=True)
             cumRewards = np.zeros((eva.nbPlayers, eva.horizon))
-            for playerId, player in enumerate(eva.players):
+            for playerId, _ in enumerate(eva.players):
                 cumRewards[playerId, :] = eva.getRewards(playerId, envId)
             # # Print each fairness measure  # DEBUG
             # for fN, fF in fairness_mapping.items():
@@ -548,7 +578,7 @@ class EvaluatorMultiPlayers(object):
         # plt.ylim(0, 1)
         plt.ylabel("Centralized measure of fairness for cumulative rewards ({})".format(fairnessName.title()))
         plt.title("Multi-players $M = {}$ : Centralized measure of fairness, averaged ${}$ times\n${}$ arms{}: {}".format(self.nbPlayers, self.repetitions, self.envs[envId].nbArms, self.envs[envId].str_sparsity(), self.envs[envId].reprarms(self.nbPlayers, latex=True)))
-        show_and_save(self.showplot, savefig, fig=fig, pickleit=PICKLE_IT)
+        show_and_save(self.showplot, savefig, fig=fig, pickleit=USE_PICKLE)
         return fig
 
     def plotRegretCentralized(self, envId=0, savefig=None,
@@ -612,14 +642,14 @@ class EvaluatorMultiPlayers(object):
                         if semilogy or loglog:  # Manual fix for issue https://github.com/SMPyBandits/SMPyBandits/issues/38
                             plt.yscale('log')
         # We also plot our lower bound
-        if not self.envs[envId].isChangingAtEachRepetition:
+        if not self.envs[envId].isDynamic:
             try:
                 # XXX In fact, the lower-bound is also true for Bayesian policies! Finite means ARE ALWAYS linear! I should write the proof, but I convinced myself that the lower-bound is still correct (in a certain sense) and at least it gives an overview of the (average) complexity of the problem (randomly drawn and) used for the experiments.
                 lowerbound, anandkumar_lowerbound, centralized_lowerbound = self.envs[envId].lowerbound_multiplayers(self.nbPlayers)
                 if not (semilogx or semilogy or loglog):
                     print("\nThis MAB problem has: \n - a [Lai & Robbins] complexity constant C(mu) = {:.3g} for 1-player problem ... \n - a Optimal Arm Identification factor H_OI(mu) = {:.2%} ...".format(self.envs[envId].lowerbound(), self.envs[envId].hoifactor()))  # DEBUG
-                if self.envs[envId].isChangingAtEachRepetition:
-                    print("WARNING this env is in fact dynamic, this complexity term and H_OI factor do not have much sense... (they are computed from the average of the complexity for all mean vectors drawn in the repeted experiments...)")  # DEBUG
+                if self.envs[envId].isDynamic:
+                    print("WARNING this env is in fact dynamic, this complexity term and H_OI factor do not have much sense... (they are computed from the average of the complexity for all mean vectors drawn in the repeated experiments...)")  # DEBUG
                 print(" - [Anandtharam et al] centralized lower-bound = {:.3g},\n - [Anandkumar et al] decentralized lower-bound = {:.3g}\n - Our better (larger) decentralized lower-bound = {:.3g},".format(centralized_lowerbound, anandkumar_lowerbound, lowerbound))  # DEBUG
                 if normalized:
                     T = np.ones_like(X)
@@ -635,9 +665,12 @@ class EvaluatorMultiPlayers(object):
         # Labels and legends
         legend()
         plt.xlabel("Time steps $t = 1...T$, horizon $T = {}$, {}{}".format(self.horizon, self.strPlayers() if len(evaluators) == 1 else "", self.signature))
-        plt.ylabel("{}umulative centralized regret {}".format("Normalized c" if normalized else "C", r"$\sum_{k=1}^{%d}\mu_k^* t - \sum_{k=1}^{%d} \mu_k\mathbb{E}_{%d}[T_k(t)]$" % (self.nbPlayers, self.envs[envId].nbArms, self.repetitions) if moreAccurate else r"$\mathbb{E}_{%d}[R_t]$" % self.repetitions))
+        if self.nb_break_points > 0:
+            plt.ylabel("{}umulative non-stationary centralized regret\n{}".format("Normalized c" if normalized else "C", r"$\sum_{s=1}^{t} \sum_{k=1}^{%d} \mu_k^*(s) - \sum_{s=1}^{t} \sum_{k=1}^{%d} \mu_k(s) \mathbb{P}_{%d}[A^j(t)=k,\overline{C}^j(t)]$" % (self.nbPlayers, self.envs[envId].nbArms, self.repetitions) if moreAccurate else r"$\mathbb{E}_{%d}[R_t]$" % self.repetitions))
+        else:
+            plt.ylabel("{}umulative centralized regret {}".format("Normalized c" if normalized else "C", r"$t \sum_{k=1}^{%d} \mu_k^* - \sum_{s=1}^{t} \sum_{k=1}^{%d} \mu_k(s) \mathbb{P}_{%d}[A^j(t)=k,\overline{C}^j(t)]$" % (self.nbPlayers, self.envs[envId].nbArms, self.repetitions) if moreAccurate else r"$\mathbb{E}_{%d}[R_t]$" % self.repetitions))
         plt.title("Multi-players $M = {}$ : {}umulated centralized regret, averaged ${}$ times\n${}$ arms{}: {}".format(self.nbPlayers, "Normalized c" if normalized else "C", self.repetitions, self.envs[envId].nbArms, self.envs[envId].str_sparsity(), self.envs[envId].reprarms(self.nbPlayers, latex=True)))
-        show_and_save(self.showplot, savefig, fig=fig, pickleit=PICKLE_IT)
+        show_and_save(self.showplot, savefig, fig=fig, pickleit=USE_PICKLE)
         return fig
 
     def plotNbSwitchs(self, envId=0, savefig=None, semilogx=False, cumulated=False):
@@ -661,7 +694,7 @@ class EvaluatorMultiPlayers(object):
         if not cumulated: add_percent_formatter("yaxis", 1.0)
         plt.ylabel("{} of switches by player".format("Cumulated number" if cumulated else "Frequency"))
         plt.title("Multi-players $M = {}$ : {}umber of switches for each player, averaged ${}$ times\n{} arm{}s: {}".format(self.nbPlayers, "Cumulated n" if cumulated else "N", self.repetitions, self.envs[envId].nbArms, self.envs[envId].str_sparsity(), self.envs[envId].reprarms(self.nbPlayers, latex=True)))
-        show_and_save(self.showplot, savefig, fig=fig, pickleit=PICKLE_IT)
+        show_and_save(self.showplot, savefig, fig=fig, pickleit=USE_PICKLE)
         return fig
 
     def plotNbSwitchsCentralized(self, envId=0, savefig=None, semilogx=False, cumulated=False, evaluators=()):
@@ -686,7 +719,7 @@ class EvaluatorMultiPlayers(object):
         if not cumulated: add_percent_formatter("yaxis", 1.0)
         plt.ylabel("{} of switches (changes of arms)".format("Cumulated number" if cumulated else "Frequency"))
         plt.title("Multi-players $M = {}$ : Total {}number of switches, averaged ${}$ times\n${}$ arms{}: {}".format(self.nbPlayers, "cumulated " if cumulated else "", self.repetitions, self.envs[envId].nbArms, self.envs[envId].str_sparsity(), self.envs[envId].reprarms(self.nbPlayers, latex=True)))
-        show_and_save(self.showplot, savefig, fig=fig, pickleit=PICKLE_IT)
+        show_and_save(self.showplot, savefig, fig=fig, pickleit=USE_PICKLE)
         return fig
 
     def plotBestArmPulls(self, envId=0, savefig=None):
@@ -705,9 +738,12 @@ class EvaluatorMultiPlayers(object):
         legend()
         plt.xlabel("Time steps $t = 1...T$, horizon $T = {}${}".format(self.horizon, self.signature))
         add_percent_formatter("yaxis", 1.0)
+        # FIXME fix computation in case of non stationary bandits
+        if self.nb_break_points > 0:
+            print("WARNING the computation of Frequency of pulls of the optimal arm is wrong for non-stationary bandits...")  # DEBUG
         plt.ylabel("Frequency of pulls of the optimal arm")
         plt.title("Multi-players $M = {}$ : Best arm pulls frequency for each players, averaged ${}$ times\n{} arm{}s: {}".format(self.nbPlayers, self.cfg['repetitions'], self.envs[envId].nbArms, self.envs[envId].str_sparsity(), self.envs[envId].reprarms(self.nbPlayers, latex=True)))
-        show_and_save(self.showplot, savefig, fig=fig, pickleit=PICKLE_IT)
+        show_and_save(self.showplot, savefig, fig=fig, pickleit=USE_PICKLE)
         return fig
 
     def plotAllPulls(self, envId=0, savefig=None, cumulated=True, normalized=False):
@@ -755,7 +791,7 @@ class EvaluatorMultiPlayers(object):
         add_percent_formatter("yaxis", 1.0)
         plt.ylabel("{}ransmission on a free channel".format("Cumulated T" if cumulated else "T"))
         plt.title("Multi-players $M = {}$ : {}free transmission for each players, averaged ${}$ times\n{} arm{}s: {}".format(self.nbPlayers, "Cumulated " if cumulated else "", self.cfg['repetitions'], self.envs[envId].nbArms, self.envs[envId].str_sparsity(), self.envs[envId].reprarms(self.nbPlayers, latex=True)))
-        show_and_save(self.showplot, savefig, fig=fig, pickleit=PICKLE_IT)
+        show_and_save(self.showplot, savefig, fig=fig, pickleit=USE_PICKLE)
         return fig
 
     # TODO I should plot the evolution of the occupation ratio of each channel, as a function of time
@@ -795,7 +831,7 @@ class EvaluatorMultiPlayers(object):
         plt.ylabel("{} of collisions on all arms".format("Cumulated number" if cumulated else "Frequency"))
         legend()
         plt.title("Multi-players $M = {}$ : {}of collisions, averaged ${}$ times\n{} arm{}s: {}".format(self.nbPlayers, "Cumulated number " if cumulated else "Frequency ", self.cfg['repetitions'], self.envs[envId].nbArms, self.envs[envId].str_sparsity(), self.envs[envId].reprarms(self.nbPlayers, latex=True)))
-        show_and_save(self.showplot, savefig, fig=fig, pickleit=PICKLE_IT)
+        show_and_save(self.showplot, savefig, fig=fig, pickleit=USE_PICKLE)
         return fig
 
     def plotFrequencyCollisions(self, envId=0, savefig=None, piechart=True, semilogy=False):
@@ -841,7 +877,7 @@ class EvaluatorMultiPlayers(object):
                 add_percent_formatter("yaxis", 1.0)
         legend()
         plt.title("Multi-players $M = {}$ : Frequency of collision for each arm, averaged ${}$ times\n{} arm{}s: {}".format(self.nbPlayers, self.cfg['repetitions'], self.envs[envId].nbArms, self.envs[envId].str_sparsity(), self.envs[envId].reprarms(self.nbPlayers, latex=True)))
-        show_and_save(self.showplot, savefig, fig=fig, pickleit=PICKLE_IT)
+        show_and_save(self.showplot, savefig, fig=fig, pickleit=USE_PICKLE)
         return fig
 
     def printRunningTimes(self, envId=0, precision=3, evaluators=()):
@@ -872,7 +908,7 @@ class EvaluatorMultiPlayers(object):
             if e.repetitions <= 1:
                 print(u"    {} (mean of 1 run)".format(sizeof_fmt(mean_time)))
             else:
-                print(u"    {} ± {} (mean ± var. dev. of {} runs)".format(e.repetitions, sizeof_fmt(mean_time), sizeof_fmt(var_time)))
+                print(u"    {} ± {} (mean ± var. dev. of {} runs)".format(sizeof_fmt(mean_time), sizeof_fmt(var_time), e.repetitions))
 
     def plotRunningTimes(self, envId=0, savefig=None, base=1, unit="seconds", evaluators=()):
         """Plot the running times of the different players, as a box plot for each evaluators."""
@@ -888,7 +924,7 @@ class EvaluatorMultiPlayers(object):
         labels = [ labels[i] for i in index_of_sorting ]
         all_times = [ np.asarray(all_times[i]) / float(base) for i in index_of_sorting ]
         fig = plt.figure()
-        violin_or_box_plot(all_times, labels=labels, boxplot=USE_BOX_PLOT)
+        violin_or_box_plot(all_times, labels=labels, boxplot=self.use_box_plot)
         plt.xlabel("Policies{}".format(self.signature))
         ylabel = "Running times (in {}), for {} repetitions".format(unit, self.repetitions)
         plt.ylabel(ylabel)
@@ -911,7 +947,7 @@ class EvaluatorMultiPlayers(object):
         labels = [ labels[i] for i in index_of_sorting ]
         all_memories = [ np.asarray(all_memories[i]) / float(base) for i in index_of_sorting ]
         fig = plt.figure()
-        violin_or_box_plot(all_memories, labels=labels, boxplot=USE_BOX_PLOT)
+        violin_or_box_plot(all_memories, labels=labels, boxplot=self.use_box_plot)
         plt.xlabel("Policies{}".format(self.signature))
         ylabel = "Memory consumption (in {}), for {} repetitions".format(unit, self.repetitions)
         plt.ylabel(ylabel)
@@ -922,7 +958,7 @@ class EvaluatorMultiPlayers(object):
 
     def printFinalRanking(self, envId=0, verb=True):
         """Compute and print the ranking of the different players."""
-        print("\nGiving the final ranks ...")
+        if verb: print("\nGiving the final ranks ...")
         assert 0 < self.averageOn < 1, "Error, the parameter averageOn of a EvaluatorMultiPlayers class has to be in (0, 1) strictly, but is = {} here ...".format(self.averageOn)  # DEBUG
         if verb: print("\nFinal ranking for this environment #{:>2} : {} ...".format(envId, self.strPlayers(latex=False, short=True)))  # DEBUG
         lastY = np.zeros(self.nbPlayers)
@@ -970,6 +1006,7 @@ class EvaluatorMultiPlayers(object):
     def plotLastRegrets(self, envId=0,
                         normed=False, subplots=True, nbbins=15, log=False,
                         all_on_separate_figures=False, sharex=False, sharey=False,
+                        boxplot=False, normalized_boxplot=True,
                         savefig=None, moreAccurate=None,
                         evaluators=()):
         """Plot histogram of the regrets R_T for all evaluators."""
@@ -979,7 +1016,31 @@ class EvaluatorMultiPlayers(object):
         evaluators = [self] + list(evaluators)  # Default to only [self]
         N = len(evaluators)
         colors = palette(N)
-        if all_on_separate_figures:
+        if self.repetitions == 1:
+            boxplot = True
+        if boxplot:
+            all_last_regrets = []
+            labels = []
+            for evaId, eva in enumerate(evaluators):
+                last_regret = eva.getLastRegrets(envId=envId, moreAccurate=moreAccurate)
+                if normalized_boxplot:
+                    last_regret /= np.log(self.horizon)
+                all_last_regrets.append(last_regret)
+                labels.append(eva.strPlayers(short=True))
+            means = [ np.mean(last_regrets) for last_regrets in all_last_regrets ]
+            # order by increasing mean regret
+            index_of_sorting = np.argsort(means)
+            labels = [ labels[i] for i in index_of_sorting ]
+            all_last_regrets = [ np.asarray(all_last_regrets[i]) for i in index_of_sorting ]
+            fig = plt.figure()
+            plt.xlabel("Bandit algorithms{}".format(self.signature))
+            ylabel = "{}egret value $R_T{}$,\nfor $T = {}$, for {} repetitions".format("Normalized r" if normalized_boxplot else "R", r"/\log(T)" if normalized_boxplot else "", self.horizon, self.repetitions)
+            plt.ylabel(ylabel, fontsize="x-small")
+            plt.title("Multi-players $M = {}$ : regrets for different bandit algorithms\n${}$ arms{}: {}".format(self.nbPlayers, self.envs[envId].nbArms, self.envs[envId].str_sparsity(), self.envs[envId].reprarms(self.nbPlayers, latex=True)))
+            violin_or_box_plot(data=all_last_regrets, labels=labels, boxplot=self.use_box_plot)
+            adjust_xticks_subplots(ylabel=ylabel, labels=labels)
+            legend()
+        elif all_on_separate_figures:
             figs = []
             for evaId, eva in enumerate(evaluators):
                 fig = plt.figure()
@@ -990,7 +1051,7 @@ class EvaluatorMultiPlayers(object):
                 n, returned_bins, patches = plt.hist(last_regrets, density=normed, color=colors[evaId], bins=nbbins)
                 addTextForWorstCases(plt, n, returned_bins, patches, normed=normed)
                 legend()
-                show_and_save(self.showplot, None if savefig is None else "{}__Algo_{}_{}".format(savefig, 1 + evaId, 1 + N), fig=fig, pickleit=PICKLE_IT)
+                show_and_save(self.showplot, None if savefig is None else "{}__Algo_{}_{}".format(savefig, 1 + evaId, 1 + N), fig=fig, pickleit=USE_PICKLE)
                 figs.append(fig)
             return figs
         elif subplots:
@@ -1031,8 +1092,23 @@ class EvaluatorMultiPlayers(object):
                 addTextForWorstCases(plt, n, returned_bins, patches, normed=normed)
             legend()
         # Common part
-        show_and_save(self.showplot, savefig, fig=fig, pickleit=PICKLE_IT)
+        show_and_save(self.showplot, savefig, fig=fig, pickleit=USE_PICKLE)
         return fig
+
+    def plotHistoryOfMeans(self, envId=0, horizon=None, savefig=None):
+        """ Plot the history of means, as a plot with x axis being the time, y axis the mean rewards, and K curves one for each arm."""
+        if horizon is None:
+            horizon = self.horizon
+        env = self.envs[envId]
+        if hasattr(env, 'plotHistoryOfMeans'):
+            fig = env.plotHistoryOfMeans(horizon=horizon, savefig=savefig, showplot=self.showplot)
+            # FIXME https://github.com/SMPyBandits/SMPyBandits/issues/175#issuecomment-455637453
+            #  For one trajectory, we can ask Evaluator.Evaluator to store not only the number of detections, but more! We can store the times of detections, for each arms (as a list of list).
+            # If we have these data (for each repetitions), we can plot the detection times (for each arm) on a plot like the following
+            return fig
+        else:
+            print("Warning: environment {} did not have a method plotHistoryOfMeans...".format(env))  # DEBUG
+
 
     def strPlayers(self, short=False, latex=True):
         """Get a string of the players for this environment."""
@@ -1063,6 +1139,7 @@ def delayed_play(env, players, horizon, collisionModel,
         np.random.seed(seed)
         random.seed(seed)
     means = env.means
+    if hasattr(env, "currentInterval"): env.currentInterval = 0
     if env.isChangingAtEachRepetition:
         means = env.newRandomArms()
     players = deepcopy(players)
@@ -1107,6 +1184,10 @@ def delayed_play(env, players, horizon, collisionModel,
 
         # Finally we store the results
         result.store(t, choices, rewards, pulls, collisions)
+
+        if env.isDynamic and t in env.changePoints:
+            means = env.newRandomArms(t)
+            if repeatId == 0: print("\nNew means vector = {}, at time t = {} ...".format(means, t))  # DEBUG
 
         # XXX During the simulation, if using rhoRand or other ranks policy
         if all_players_have_ranks and t > 1:

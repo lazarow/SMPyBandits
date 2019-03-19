@@ -10,12 +10,10 @@ __version__ = "0.9"
 
 # Generic imports
 import sys
-from os import mkdir
+from os import mkdir, getenv
 import os.path
-from os import getenv
 from itertools import product
 import importlib
-
 # Backup evaluation object
 import pickle
 
@@ -34,7 +32,6 @@ try:
 except ImportError:
     from SMPyBandits.save_configuration_for_reproducibility import save_configuration_for_reproducibility
     from SMPyBandits.Environment import EvaluatorMultiPlayers, notify, start_tracemalloc, display_top_tracemalloc
-    configuration = None
     for arg in sys.argv:
         if arg.startswith('configuration'):
             module_name = arg.replace('.py', '')
@@ -67,15 +64,12 @@ normalized = True  #: Plot normalized regret?
 fairnessAmplitude = False  #: Use amplitude measure for the fairness or std?
 subTerms = True  #: Plot the 3 sub terms for the regret
 
-saveallfigs = False  #: Save all the figures ?
 saveallfigs = True  # XXX dont keep it like this
 
 #: Whether to do the plots for single experiments or not
-do_simple_plots = True
 do_simple_plots = False
 
 #: Whether to do the plots for comparison experiments or not
-do_comparison_plots = False
 do_comparison_plots = True
 
 if getenv('NOPLOTS', 'False') == 'True' and __name__ == '__main__':
@@ -161,6 +155,10 @@ if __name__ == '__main__':
 
             if debug_memory: start_tracemalloc()  # DEBUG
 
+            # --- Also plotting the history of means
+            if playersId == 0 and interactive:
+                evaluation.plotHistoryOfMeans(envId)  # XXX To plot without saving
+
             # Evaluate just that env
             evaluation.startOneEnv(envId, env)
             if do_comparison_plots:
@@ -193,17 +191,6 @@ if __name__ == '__main__':
                 else:
                     mkdir(plot_dir)
 
-                # --- DONE Copy (save) the current full configuration file to this folder as configuration__hashvalue.py
-                # --- DONE Save just the configuration to a minimalist python file
-                # TODO do the same on other main_*.py scripts
-                save_configuration_for_reproducibility(
-                    configuration=configuration,
-                    configuration_module=configuration_module,
-                    plot_dir=plot_dir,
-                    hashvalue=hashvalue,
-                    main_name="main_multiplayers_more.py",
-                )
-
                 if USE_PICKLE:
                     with open(picklename, 'wb') as picklefile:
                         print("Saving the EvaluatorMultiPlayers 'evaluation' objet to", picklename, "...")
@@ -213,6 +200,23 @@ if __name__ == '__main__':
 
             if not do_simple_plots:
                 break
+
+            # --- Also plotting the history of means
+            if saveallfigs:
+                savefig = mainfig.replace('main', 'main_HistoryOfMeans')
+                print(" - Plotting the history of means, and saving the plot to {} ...".format(savefig))
+                evaluation.plotHistoryOfMeans(envId, savefig=savefig)  # XXX To save the figure
+            else:
+                evaluation.plotHistoryOfMeans(envId)  # XXX To plot without saving
+
+            # --- Also plotting the boxplot of regrets
+            print("\n- Plotting the boxplot of regrets")
+            if saveallfigs:
+                savefig = mainfig.replace('main', 'main_BoxPlotRegret')
+                print("  and saving the plot to {} ...".format(savefig))
+                evaluation.plotLastRegrets(envId, boxplot=True, savefig=savefig)
+            else:
+                evaluation.plotLastRegrets(envId, boxplot=True)  # XXX To plot without saving
 
             # --- Also plotting the running times
             if saveallfigs:
@@ -240,7 +244,7 @@ if __name__ == '__main__':
                 evaluation.plotRewards(envId)  # XXX To plot without saving
 
             # --- Also plotting the centralized fairness
-            for fairness in ['STD'] if savefig else ['Ampl', 'STD', 'RajJain', 'Mean']:
+            for fairness in ['STD']:
                 print("\n\n- Plotting the centralized fairness (%s)" % fairness)
                 if saveallfigs:
                     savefig = mainfig.replace('main', 'main_Fairness%s' % fairness)
@@ -399,6 +403,17 @@ if __name__ == '__main__':
             if saveallfigs:
                 print("\n\n==> To see the figures, do :\neog", os.path.join(plot_dir, "main*{}.png".format(hashvalue)))  # DEBUG
 
+        # --- DONE Copy (save) the current full configuration file to this folder as configuration__hashvalue.py
+        # --- DONE Save just the configuration to a minimalist python file
+        # TODO do the same on other main_*.py scripts
+        save_configuration_for_reproducibility(
+            configuration=configuration,
+            configuration_module=configuration_module,
+            plot_dir=plot_dir,
+            hashvalue=hashvalue,
+            main_name="main_multiplayers_more.py",
+        )
+
     #
     # Compare different MP strategies on the same figures
     #
@@ -424,6 +439,23 @@ if __name__ == '__main__':
         imagename = "all____env{}-{}_{}".format(envId + 1, N, _hashvalue)
         mainfig = os.path.join(plot_dir, imagename)
         savefig = mainfig
+
+        # --- Also plotting the history of means
+        if saveallfigs:
+            savefig = mainfig.replace('main', 'main_HistoryOfMeans')
+            print(" - Plotting the history of means, and saving the plot to {} ...".format(savefig))
+            evaluation.plotHistoryOfMeans(envId, savefig=savefig)  # XXX To save the figure
+        else:
+            evaluation.plotHistoryOfMeans(envId)  # XXX To plot without saving
+
+        # --- Also plotting the boxplot of regrets
+        print("\n- Plotting the boxplot of regrets")
+        if saveallfigs:
+            savefig = mainfig.replace('main', 'main_BoxPlotRegret')
+            print("  and saving the plot to {} ...".format(savefig))
+            evaluation.plotLastRegrets(envId, boxplot=True, savefig=savefig, evaluators=eothers)
+        else:
+            evaluation.plotLastRegrets(envId, boxplot=True, evaluators=eothers)  # XXX To plot without saving
 
         # --- Also plotting the running times
         if saveallfigs:
@@ -478,7 +510,7 @@ if __name__ == '__main__':
             e0.plotRegretCentralized(envId, loglog=True, normalized=False, evaluators=eothers)  # XXX To plot without saving
 
         # --- Also plotting the fairness
-        for fairness in ['STD'] if savefig else ['Ampl', 'STD', 'RajJain', 'Mean']:
+        for fairness in ['STD']:
             savefig = mainfig.replace('all', 'all_Fairness%s' % fairness)
             print("\n\n- Plotting the centralized fairness (%s)" % fairness)
             if saveallfigs:

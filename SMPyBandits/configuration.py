@@ -572,6 +572,25 @@ configuration.update({
         #         "horizon": HORIZON,
         #     }
         # },
+        # # --- TsallisInf algorithm
+        # {
+        #     "archtype": TsallisInf,
+        #     "params": {
+        #         "alpha": 0.5,
+        #     }
+        # },
+        # # {
+        # #     "archtype": TsallisInf,
+        # #     "params": {
+        # #         "alpha": 0.25,
+        # #     }
+        # # },
+        # # {
+        # #     "archtype": TsallisInf,
+        # #     "params": {
+        # #         "alpha": 0.75,
+        # #     }
+        # # },
         # # --- UCB algorithms
         # {
         #     "archtype": UCB,   # This basic UCB is very worse than the other
@@ -693,6 +712,25 @@ configuration.update({
         #     "params": {
         #         "alpha": 1.,
         #         "perturbation": "gumbel",
+        #     }
+        # },
+        # --- PHE algorithm
+        # {
+        #     "archtype": PHE,
+        #     "params": {
+        #         "perturbation_scale": 0.5,
+        #     }
+        # },
+        {
+            "archtype": PHE,
+            "params": {
+                "perturbation_scale": 1.1,
+            }
+        },
+        # {
+        #     "archtype": PHE,
+        #     "params": {
+        #         "perturbation_scale": 2.1,
         #     }
         # },
         # # --- MOSS algorithm, like UCB

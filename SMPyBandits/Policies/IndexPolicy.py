@@ -71,7 +71,7 @@ class IndexPolicy(BasePolicy):
         - If rank is 4, the 4-th best arm is chosen.
 
 
-        .. note:: This method is *required* for the rhoRand policy.
+        .. note:: This method is *required* for the :class:`PoliciesMultiPlayers.rhoRand` policy.
 
         """
         if rank == 1:
@@ -84,7 +84,11 @@ class IndexPolicy(BasePolicy):
             # Then it is fair to chose a random arm with best index, instead of aiming at an arm with index being ranked rank
             chosenIndex = sortedRewards[-rank]
             # Uniform choice among the rank-th best arms
-            return np.random.choice(np.nonzero(self.index == chosenIndex)[0])
+            try:
+                return np.random.choice(np.nonzero(self.index == chosenIndex)[0])
+            except ValueError:
+                print("Warning: unknown error in IndexPolicy.choiceWithRank(): the indexes were {} but couldn't be used to select an arm.".format(self.index))
+                return np.random.randint(self.nbArms)
 
     def choiceFromSubSet(self, availableArms='all'):
         """ In an index policy, choose the best arm from sub-set availableArms (uniformly at random)."""
@@ -115,7 +119,10 @@ class IndexPolicy(BasePolicy):
             sortedIndexes = np.sort(self.index)
             # Uniform choice of nb different arms among the best arms
             # FIXED sort it then apply affectation_order, to fix its order ==> will have a fixed nb of switches for CentralizedMultiplePlay
-            return np.random.choice(np.nonzero(self.index >= sortedIndexes[-nb])[0], size=nb, replace=False)
+            try:
+                return np.random.choice(np.nonzero(self.index >= sortedIndexes[-nb])[0], size=nb, replace=False)
+            except ValueError:
+                return np.random.choice(self.nbArms, size=nb, replace=False)
 
     def choiceIMP(self, nb=1, startWithChoiceMultiple=True):
         """ In an index policy, the IMP strategy is hybrid: choose nb-1 arms with maximal empirical averages, then 1 arm with maximal index. Cf. algorithm IMP-TS [Komiyama, Honda, Nakagawa, 2016, arXiv 1506.00779]."""
@@ -138,8 +145,7 @@ class IndexPolicy(BasePolicy):
             availableArms = np.setdiff1d(np.arange(self.nbArms), exploitations)
             exploration = self.choiceFromSubSet(availableArms)
             # Affect a random location to is exploratory arm
-            choices = np.insert(exploitations, np.random.randint(np.size(exploitations) + 1), exploration)
-            return choices  # XXX remove this useless variable
+            return np.insert(exploitations, np.random.randint(np.size(exploitations) + 1), exploration)
 
     def estimatedOrder(self):
         """ Return the estimate order of the arms, as a permutation on [0..K-1] that would order the arms by increasing means."""
