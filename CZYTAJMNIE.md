@@ -32,7 +32,7 @@ set NOPLOTS=True&& set N=1 && set T=50 && set N_JOBS=1 && python main.py configu
 ```
 ## Konwersja plików `hdf5` na `json`
 
-[https://github.com/HDFGroup/hdf5-json]{https://github.com/HDFGroup/hdf5-json}
+[https://github.com/HDFGroup/hdf5-json](https://github.com/HDFGroup/hdf5-json)
 
 ```
 ./bin/h5tojson SMPyBandits/plots/SP__K10_T1802_N100__5_algos/main____env1-1_912593881119808524.hdf5 > tall.json
