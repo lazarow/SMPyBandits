@@ -35,5 +35,10 @@ set NOPLOTS=True&& set N=1 && set T=50 && set N_JOBS=1 && python main.py configu
 [https://github.com/HDFGroup/hdf5-json](https://github.com/HDFGroup/hdf5-json)
 
 ```
+pip install h5json
+```
+
+
+```
 ./bin/h5tojson *.hdf5 > *.json
 ```
