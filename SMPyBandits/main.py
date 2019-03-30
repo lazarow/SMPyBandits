@@ -59,7 +59,8 @@ USE_PICKLE = False   #: Should we save the Evaluator object to a .pickle file at
 USE_HD5 = True   #: Should we save the data to a .hdf5 file at the end of the simulation?
 
 # Parameters for the plots (where to save them) and what to draw
-PLOT_DIR = getenv('PLOT_DIR', 'plots')  #: Directory for the plots
+# os.path.dirname(__file__) requires Python >= 3.4
+PLOT_DIR = getenv('PLOT_DIR', os.path.dirname(__file__) + '/plots')  #: Directory for the plots
 semilogx = False  #: Plot in semilogx by default?
 semilogy = False  #: Plot in semilogy by default?
 loglog   = False  #: Plot in loglog   by default?
