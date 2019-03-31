@@ -231,6 +231,8 @@ class Evaluator(object):
     def startOneEnv(self, envId, env):
         """Simulate that env."""
         plt.close('all')
+        font = {'family': 'serif', 'weight': 'normal', 'size': 12}
+        plt.rc('font', **font)
         print("\n\nEvaluating environment:", repr(env))
         self.policies = []
         self.__initPolicies__(env)
@@ -578,15 +580,15 @@ class Evaluator(object):
                 if normalizedRegret:
                     Y /= np.log(X + 2)   # XXX prevent /0
             ymin = min(ymin, np.min(Y))
-            lw = 5 if ('$N=' in policy.__cachedstr__ or 'Aggr' in policy.__cachedstr__ or 'CORRAL' in policy.__cachedstr__ or 'LearnExp' in policy.__cachedstr__ or 'Exp4' in policy.__cachedstr__) else 3
+            lw = 4 if ('$N=' in policy.__cachedstr__ or 'Aggr' in policy.__cachedstr__ or 'CORRAL' in policy.__cachedstr__ or 'LearnExp' in policy.__cachedstr__ or 'Exp4' in policy.__cachedstr__) else 2
             if len(self.policies) > 8: lw -= 1
             if semilogx or loglog:
                 # FIXED for semilogx plots, truncate to only show t >= 100
                 X_to_plot_here = X[X >= 100]
                 Y_to_plot_here = Y[X >= 100]
-                plot_method(X_to_plot_here[::self.delta_t_plot], Y_to_plot_here[::self.delta_t_plot], label=policy.__cachedstr__, color=colors[i], marker=markers[i], markevery=(i / 50., 0.1), lw=lw)
+                plot_method(X_to_plot_here[::self.delta_t_plot], Y_to_plot_here[::self.delta_t_plot], label=policy.__cachedstr__, color=colors[i], marker=markers[i], markevery=(i / 50., 0.1), lw=lw, markersize=6)
             else:
-                plot_method(X[::self.delta_t_plot], Y[::self.delta_t_plot], label=policy.__cachedstr__, color=colors[i], marker=markers[i], markevery=(i / 50., 0.1), lw=lw)
+                plot_method(X[::self.delta_t_plot], Y[::self.delta_t_plot], label=policy.__cachedstr__, color=colors[i], marker=markers[i], markevery=(i / 50., 0.1), lw=lw, markersize=6)
             if semilogx or loglog:  # Manual fix for issue https://github.com/SMPyBandits/SMPyBandits/issues/38
                 plt.xscale('log')
             if semilogy or loglog:  # Manual fix for issue https://github.com/SMPyBandits/SMPyBandits/issues/38
@@ -603,7 +605,7 @@ class Evaluator(object):
                 if normalizedRegret:
                     MaxMinY /= np.log(2 + X)
                 plt.fill_between(X[::self.delta_t_plot], Y[::self.delta_t_plot] - MaxMinY[::self.delta_t_plot], Y[::self.delta_t_plot] + MaxMinY[::self.delta_t_plot], facecolor=colors[i], alpha=0.2)
-        self._xlabel(envId, r"Time steps $t = 1...T$, horizon $T = {}${}".format(self.horizon, self.signature))
+        self._xlabel(envId, r"Krok czasowy $t = 1...H$", labelpad=15)
         lowerbound = self.envs[envId].lowerbound()
         lowerbound_sparse = self.envs[envId].lowerbound_sparse()
         if not (semilogx or semilogy or loglog):
@@ -615,7 +617,7 @@ class Evaluator(object):
                 ymin = max(0, ymin)
             plt.ylim(ymin, plt.ylim()[1])
         # Get a small string to add to ylabel
-        ylabel2 = r"%s%s" % (r", $\pm 1$ standard deviation" if (plotSTD and not plotMaxMin) else "", r", $\pm 1$ amplitude" if (plotMaxMin and not plotSTD) else "")
+        ylabel2 = r"%s%s" % (r", $\pm 1$ odchylenie standardowe" if (plotSTD and not plotMaxMin) else "", r", $\pm 1$ amplituda" if (plotMaxMin and not plotSTD) else "")
         if meanReward:
             if hasattr(self.envs[envId], 'get_allMeans'):
                 # DONE this is now fixed for non-stationary bandits
@@ -624,28 +626,30 @@ class Evaluator(object):
             else:
                 minArm, maxArm = self.envs[envId].minArm, self.envs[envId].maxArm
             # We plot a horizontal line ----- at the best arm mean
-            plt.plot(X[::self.delta_t_plot], self.envs[envId].maxArm * np.ones_like(X)[::self.delta_t_plot], 'k--', label="Largest mean = ${:.3g}$".format(maxArm))
+            plt.plot(X[::self.delta_t_plot], self.envs[envId].maxArm * np.ones_like(X)[::self.delta_t_plot], 'k--', label="Najwyższa wartość = ${:.3g}$".format(maxArm))
             legend()
-            plt.ylabel(r"Mean reward, average on time $\tilde{r}_t = \frac{1}{t} \sum_{s=1}^{t}$ %s%s" % (r"$\sum_{k=1}^{%d} \mu_k\mathbb{E}_{%d}[T_k(t)]$" % (self.envs[envId].nbArms, self.repetitions) if moreAccurate else r"$\mathbb{E}_{%d}[r_s]$" % (self.repetitions), ylabel2))
+            plt.ylabel(r"Uśredniona wartość wygranej $\tilde{r}_t = \frac{1}{t} \sum_{s=1}^{t}$ %s%s" % (r"$\sum_{k=1}^{%d} \mu_k\mathbb{E}_{%d}[T_k(t)]$" % (self.envs[envId].nbArms, self.repetitions) if moreAccurate else r"$\mathbb{E}_{%d}[r_s]$" % (self.repetitions), ylabel2), labelpad=15)
             if not self.envs[envId].isChangingAtEachRepetition and not self.nb_break_points > 0:
                 plt.ylim(0.80 * minArm, 1.10 * maxArm)
             # if self.nb_break_points > 0:
             #     plt.ylim(0, 1)  # FIXME do better!
-            plt.title("Mean rewards for different bandit algorithms, averaged ${}$ times\n${}$ arms{}: {}".format(self.repetitions, self.envs[envId].nbArms, self.envs[envId].str_sparsity(), self.envs[envId].reprarms(1, latex=True)))
+            plt.title("",{"fontsize": 1});
+            #plt.title("Mean rewards for different bandit algorithms, averaged ${}$ times\n${}$ arms{}: {}".format(self.repetitions, self.envs[envId].nbArms, self.envs[envId].str_sparsity(), self.envs[envId].reprarms(1, latex=True)))
         elif normalizedRegret:
             if self.plot_lowerbound:
                 # We also plot the Lai & Robbins lower bound
-                plt.plot(X[::self.delta_t_plot], lowerbound * np.ones_like(X)[::self.delta_t_plot], 'k-', label="[Lai & Robbins] lower bound = ${:.3g}$".format(lowerbound), lw=3)
+                plt.plot(X[::self.delta_t_plot], lowerbound * np.ones_like(X)[::self.delta_t_plot], 'k-', label="[Lai & Robbins] lower bound = ${:.3g}$".format(lowerbound), lw=2, markersize=6)
                 # We also plot the Kwon et al lower bound
                 if self.envs[envId]._sparsity is not None and not np.isnan(lowerbound_sparse):
-                    plt.plot(X[::self.delta_t_plot], lowerbound_sparse * np.ones_like(X)[::self.delta_t_plot], 'k--', label="[Kwon et al.] lower bound, $s = {}$, $= {:.3g}$".format(self.envs[envId]._sparsity, lowerbound_sparse), lw=3)
+                    plt.plot(X[::self.delta_t_plot], lowerbound_sparse * np.ones_like(X)[::self.delta_t_plot], 'k--', label="[Kwon et al.] lower bound, $s = {}$, $= {:.3g}$".format(self.envs[envId]._sparsity, lowerbound_sparse), lw=2, markersize=6)
             legend()
             if self.nb_break_points > 0:
                 # DONE fix math formula in case of non stationary bandits
-                plt.ylabel(r"Normalized non-stationary regret\n$\frac{R_t}{\log(t)} = \frac{1}{\log(t)}\sum_{s=1}^{t} \max_k \mu_k(t) - \frac{1}{\log(t)}$ %s%s" % (r"$\sum_{s=1}^{t} \sum_{k=1}^{%d} \mu_k(t) \mathbb{E}_{%d}[1(I(t)=k)]$" % (self.envs[envId].nbArms, self.repetitions) if moreAccurate else r"$\sum_{s=1}^{t} $\mathbb{E}_{%d}[r_s]$" % (self.repetitions), ylabel2))
+                plt.ylabel(r"Znormalizowana całkowita niestacjonarna strata\n$\frac{R_t}{\log(t)} = \frac{1}{\log(t)}\sum_{s=1}^{t} \max_k \mu_k(t) - \frac{1}{\log(t)}$ %s%s" % (r"$\sum_{s=1}^{t} \sum_{k=1}^{%d} \mu_k(t) \mathbb{E}_{%d}[1(I(t)=k)]$" % (self.envs[envId].nbArms, self.repetitions) if moreAccurate else r"$\sum_{s=1}^{t} $\mathbb{E}_{%d}[r_s]$" % (self.repetitions), ylabel2))
             else:
-                plt.ylabel(r"Normalized regret%s$\frac{R_t}{\log(t)} = \frac{t}{\log(t)} \mu^* - \frac{1}{\log(t)}\sum_{s=1}^{t}$ %s%s" % ("\n", r"$\sum_{k=1}^{%d} \mu_k\mathbb{E}_{%d}[T_k(t)]$" % (self.envs[envId].nbArms, self.repetitions) if moreAccurate else r"$\mathbb{E}_{%d}[r_s]$" % (self.repetitions), ylabel2))
-            plt.title("Normalized cumulated regrets for different bandit algorithms, averaged ${}$ times\n${}$ arms{}: {}".format(self.repetitions, self.envs[envId].nbArms, self.envs[envId].str_sparsity(), self.envs[envId].reprarms(1, latex=True)))
+                plt.ylabel(r"Znormalizowana całkowita strata%s$\frac{R_t}{\log(t)} = \frac{t}{\log(t)} \mu^* - \frac{1}{\log(t)}\sum_{s=1}^{t}$ %s%s" % ("\n", r"$\sum_{k=1}^{%d} \mu_k\mathbb{E}_{%d}[T_k(t)]$" % (self.envs[envId].nbArms, self.repetitions) if moreAccurate else r"$\mathbb{E}_{%d}[r_s]$" % (self.repetitions), ylabel2))
+            plt.title("",{"fontsize": 1});
+            #plt.title("Normalized cumulated regrets for different bandit algorithms, averaged ${}$ times\n${}$ arms{}: {}".format(self.repetitions, self.envs[envId].nbArms, self.envs[envId].str_sparsity(), self.envs[envId].reprarms(1, latex=True)))
         else:
             if drawUpperBound and not (semilogx or loglog):
                 # Experiment to print also an upper bound: it is CRAZILY huge!!
@@ -654,7 +658,7 @@ class Evaluator(object):
                 maxVariance = max([p * (1 - p) for p in self.envs[envId].means])
                 K = self.envs[envId].nbArms
                 upperbound = 76 * np.sqrt(maxVariance * K * X) + amplitude * K
-                plt.plot(X[::self.delta_t_plot], upperbound[::self.delta_t_plot], 'r-', label=r"Minimax upper-bound for kl-UCB++", lw=3)
+                plt.plot(X[::self.delta_t_plot], upperbound[::self.delta_t_plot], 'r-', label=r"Minimax upper-bound for kl-UCB++", lw=2, markersize=6)
             # FIXED for semilogx plots, truncate to only show t >= 100
             if semilogx or loglog:
                 X = X[X >= 100]
@@ -662,17 +666,18 @@ class Evaluator(object):
                 X = X[X >= 1]
             if self.plot_lowerbound:
                 # We also plot the Lai & Robbins lower bound
-                plt.plot(X[::self.delta_t_plot], lowerbound * np.log(X)[::self.delta_t_plot], 'k-', label=r"[Lai & Robbins] lower bound = ${:.3g}\; \log(t)$".format(lowerbound), lw=3)
+                plt.plot(X[::self.delta_t_plot], lowerbound * np.log(X)[::self.delta_t_plot], 'k-', label=r"[Lai & Robbins] lower bound = ${:.3g}\; \log(t)$".format(lowerbound), lw=2, markersize=6)
                 # We also plot the Kwon et al lower bound
                 if self.envs[envId]._sparsity is not None and not np.isnan(lowerbound_sparse):
-                    plt.plot(X[::self.delta_t_plot], lowerbound_sparse * np.ones_like(X)[::self.delta_t_plot], 'k--', label=r"[Kwon et al.] lower bound, $s = {}$, $= {:.3g} \; \log(t)$".format(self.envs[envId]._sparsity, lowerbound_sparse), lw=3)
+                    plt.plot(X[::self.delta_t_plot], lowerbound_sparse * np.ones_like(X)[::self.delta_t_plot], 'k--', label=r"[Kwon et al.] lower bound, $s = {}$, $= {:.3g} \; \log(t)$".format(self.envs[envId]._sparsity, lowerbound_sparse), lw=2, markersize=6)
             legend()
             if self.nb_break_points > 0:
                 # DONE fix math formula in case of non stationary bandits
-                plt.ylabel(r"Non-stationary regret\n$R_t = \sum_{s=1}^{t} \max_k \mu_k(s) - \sum_{s=1}^{t}$%s%s" % (r"$\sum_{k=1}^{%d} \mu_k\mathbb{P}_{%d}[A(t)=k]$" % (self.envs[envId].nbArms, self.repetitions) if moreAccurate else r"$\mathbb{E}_{%d}[r_s]$" % (self.repetitions), ylabel2))
+                plt.ylabel(r"Całkowita niestacjonarna strata\n$R_t = \sum_{s=1}^{t} \max_k \mu_k(s) - \sum_{s=1}^{t}$%s%s" % (r"$\sum_{k=1}^{%d} \mu_k\mathbb{P}_{%d}[A(t)=k]$" % (self.envs[envId].nbArms, self.repetitions) if moreAccurate else r"$\mathbb{E}_{%d}[r_s]$" % (self.repetitions), ylabel2))
             else:
-                plt.ylabel(r"Regret $R_t = t \mu^* - \sum_{s=1}^{t}$ %s%s" % (r"$\sum_{k=1}^{%d} \mu_k\mathbb{E}_{%d}[T_k(t)]$" % (self.envs[envId].nbArms, self.repetitions) if moreAccurate else r"$\mathbb{E}_{%d}[r_s]$ (from actual rewards)" % (self.repetitions), ylabel2))
-            plt.title("Cumulated regrets for different bandit algorithms, averaged ${}$ times\n${}$ arms{}: {}".format(self.repetitions, self.envs[envId].nbArms, self.envs[envId].str_sparsity(), self.envs[envId].reprarms(1, latex=True)))
+                plt.ylabel(r"Całkowita strata $R_t = t \mu^* - \sum_{s=1}^{t}$ %s%s" % (r"$\sum_{k=1}^{%d} \mu_k\mathbb{E}_{%d}[T_k(t)]$" % (self.envs[envId].nbArms, self.repetitions) if moreAccurate else r"$\mathbb{E}_{%d}[r_s]$ (from actual rewards)" % (self.repetitions), ylabel2), labelpad=15)
+            plt.title("",{"fontsize": 1});
+            #plt.title("Cumulated regrets for different bandit algorithms, averaged ${}$ times\n${}$ arms{}: {}".format(self.repetitions, self.envs[envId].nbArms, self.envs[envId].str_sparsity(), self.envs[envId].reprarms(1, latex=True)))
         show_and_save(self.showplot, savefig, fig=fig, pickleit=USE_PICKLE)
         return fig
 
@@ -687,14 +692,15 @@ class Evaluator(object):
         X = self._times[2:]
         for i, policy in enumerate(self.policies):
             Y = self.getBestArmPulls(i, envId)[2:]
-            lw = 5 if ('$N=' in policy.__cachedstr__ or 'Aggr' in policy.__cachedstr__ or 'CORRAL' in policy.__cachedstr__ or 'LearnExp' in policy.__cachedstr__ or 'Exp4' in policy.__cachedstr__) else 3
+            lw = 4 if ('$N=' in policy.__cachedstr__ or 'Aggr' in policy.__cachedstr__ or 'CORRAL' in policy.__cachedstr__ or 'LearnExp' in policy.__cachedstr__ or 'Exp4' in policy.__cachedstr__) else 2
             if len(self.policies) > 8: lw -= 1
-            plt.plot(X[::self.delta_t_plot], Y[::self.delta_t_plot], label=policy.__cachedstr__, color=colors[i], marker=markers[i], markevery=(i / 50., 0.1), lw=lw)
+            plt.plot(X[::self.delta_t_plot], Y[::self.delta_t_plot], label=policy.__cachedstr__, color=colors[i], marker=markers[i], markevery=(i / 50., 0.1), lw=lw, markersize=6)
         legend()
-        self._xlabel(envId, r"Time steps $t = 1...T$, horizon $T = {}${}".format(self.horizon, self.signature))
+        self._xlabel(envId, r"Krok czasowy $t = 1...H$", labelpad=15)
         add_percent_formatter("yaxis", 1.0)
-        plt.ylabel("Frequency of pulls of the optimal arm")
-        plt.title("Best arm pulls frequency for different bandit algorithms, averaged ${}$ times\n${}$ arms{}: {}".format(self.repetitions, self.envs[envId].nbArms, self.envs[envId].str_sparsity(), self.envs[envId].reprarms(1, latex=True)))
+        plt.ylabel("Częstość wyboru najlepszego ramienia wyrażona w procentach", labelpad=15)
+        plt.title("")
+        #plt.title("Best arm pulls frequency for different bandit algorithms, averaged ${}$ times\n${}$ arms{}: {}".format(self.repetitions, self.envs[envId].nbArms, self.envs[envId].str_sparsity(), self.envs[envId].reprarms(1, latex=True)))
         show_and_save(self.showplot, savefig, fig=fig, pickleit=USE_PICKLE)
         return fig
 
@@ -726,11 +732,13 @@ class Evaluator(object):
         all_times = [ np.asarray(all_times[i]) / float(base) for i in index_of_sorting ]
         fig = plt.figure()
         violin_or_box_plot(data=all_times, labels=labels, boxplot=self.use_box_plot)
-        plt.xlabel("Bandit algorithms{}".format(self.signature))
-        ylabel = "Running times (in {}), for {} repetitions".format(unit, self.repetitions)
-        plt.ylabel(ylabel)
+        plt.xlabel("")
+        #plt.xlabel("Strategie wyboru{}".format(self.signature))
+        ylabel = "Uśredniony czas działania w sekundach"
+        plt.ylabel(ylabel, labelpad=15)
         adjust_xticks_subplots(ylabel=ylabel, labels=labels)
-        plt.title("Running times for different bandit algorithms, horizon $T={}$, averaged ${}$ times\n${}$ arms{}: {}".format(self.horizon, self.repetitions, self.envs[envId].nbArms, self.envs[envId].str_sparsity(), self.envs[envId].reprarms(1, latex=True)))
+        plt.title("")
+        #plt.title("Running times for different bandit algorithms, horizon $T={}$, averaged ${}$ times\n${}$ arms{}: {}".format(self.horizon, self.repetitions, self.envs[envId].nbArms, self.envs[envId].str_sparsity(), self.envs[envId].reprarms(1, latex=True)))
         show_and_save(self.showplot, savefig, fig=fig, pickleit=USE_PICKLE)
         return fig
 
@@ -758,11 +766,13 @@ class Evaluator(object):
         all_memories = [ np.asarray(all_memories[i]) / float(base) for i in index_of_sorting ]
         fig = plt.figure()
         violin_or_box_plot(data=all_memories, labels=labels, boxplot=True)
-        plt.xlabel("Bandit algorithms{}".format(self.signature))
-        ylabel = "Memory consumption (in {}), for {} repetitions".format(unit, self.repetitions)
-        plt.ylabel(ylabel)
+        plt.xlabel("");
+        #plt.xlabel("Strategie wyboru{}".format(self.signature))
+        ylabel = "Uśrednione zużycie pamięci (w {})".format(unit)
+        plt.ylabel(ylabel, labelpad=15)
         adjust_xticks_subplots(ylabel=ylabel, labels=labels)
-        plt.title("Memory consumption for different bandit algorithms, horizon $T={}$, averaged ${}$ times\n${}$ arms{}: {}".format(self.horizon, self.repetitions, self.envs[envId].nbArms, self.envs[envId].str_sparsity(), self.envs[envId].reprarms(1, latex=True)))
+        plt.title("")
+        #plt.title("Memory consumption for different bandit algorithms, horizon $T={}$, averaged ${}$ times\n${}$ arms{}: {}".format(self.horizon, self.repetitions, self.envs[envId].nbArms, self.envs[envId].str_sparsity(), self.envs[envId].reprarms(1, latex=True)))
         show_and_save(self.showplot, savefig, fig=fig, pickleit=USE_PICKLE)
 
     def printNumberOfCPDetections(self, envId=0):
@@ -843,19 +853,23 @@ class Evaluator(object):
             labels = [ labels[i] for i in index_of_sorting ]
             all_last_regrets = [ np.asarray(all_last_regrets[i]) for i in index_of_sorting ]
             fig = plt.figure()
-            plt.xlabel("Bandit algorithms{}".format(self.signature))
-            ylabel = "{}egret value $R_T{}$,\nfor $T = {}$, for {} repetitions".format("Normalized r" if normalized_boxplot else "R", r"/\log(T)" if normalized_boxplot else "", self.horizon, self.repetitions)
-            plt.ylabel(ylabel, fontsize="x-small")
+            plt.xlabel("")
+            #plt.xlabel("Strategie wyboru{}".format(self.signature))
+            ylabel = "{}ałkowita strata $R_T{}$".format("Znormalizowana c" if normalized_boxplot else "C", r"/\log(T)" if normalized_boxplot else "")
+            plt.ylabel(ylabel, labelpad=15)
             violin_or_box_plot(data=all_last_regrets, labels=labels, boxplot=self.use_box_plot)
             adjust_xticks_subplots(ylabel=ylabel, labels=labels)
-            plt.title("Regret for different bandit algorithms, horizon $T={}$, averaged ${}$ times\n${}$ arms{}: {}".format(self.horizon, self.repetitions, self.envs[envId].nbArms, self.envs[envId].str_sparsity(), self.envs[envId].reprarms(1, latex=True)))
+            plt.title("")
+            #plt.title("Regret for different bandit algorithms, horizon $T={}$, averaged ${}$ times\n${}$ arms{}: {}".format(self.horizon, self.repetitions, self.envs[envId].nbArms, self.envs[envId].str_sparsity(), self.envs[envId].reprarms(1, latex=True)))
         elif all_on_separate_figures:
             figs = []
             for policyId, policy in enumerate(self.policies):
                 fig = plt.figure()
-                plt.title("Histogram straty dla {}\n${}$ ramion(a){}: {}".format(policy.__cachedstr__, self.envs[envId].nbArms, self.envs[envId].str_sparsity(), self.envs[envId].reprarms(1, latex=True)))
-                plt.xlabel("Wartość straty $R_T$, liczba iteracji $T = {}${}".format(self.horizon, self.signature))
-                plt.ylabel("{} obserwacji, ${}$ powtórzeń".format("Częstotliwość" if normed else "Liczba", self.repetitions))
+                plt.title("",{"fontsize": 1});
+                #plt.title("Histogram straty dla {}\n${}$ ramion(a){}: {}".format(policy.__cachedstr__, self.envs[envId].nbArms, self.envs[envId].str_sparsity(), self.envs[envId].reprarms(1, latex=True)))
+                plt.xlabel("Wartość straty $R_T${}".format(self.signature), labelpad=15)
+                plt.ylabel("Częstość zaobserowanej straty", labelpad=15)
+                #plt.ylabel("{} obserwacji, ${}$ powtórzeń".format("Częstotliwość" if normed else "Liczba", self.repetitions))
                 last_regrets = self.getLastRegrets(policyId, envId=envId, moreAccurate=moreAccurate)
                 sns.distplot(last_regrets, hist=True, bins=nbbins, color=colors[policyId], kde_kws={'cut': 0, 'marker': markers[policyId], 'markevery': (policyId / 50., 0.1)})
                 legend()
@@ -865,14 +879,16 @@ class Evaluator(object):
         elif subplots:
             nrows, ncols = nrows_ncols(N)
             fig, axes = plt.subplots(nrows, ncols, sharex=sharex, sharey=sharey)
-            fig.suptitle("Histogram straty dla różnych algorytmów\n${}$ ramion(a){}: {}".format(self.envs[envId].nbArms, self.envs[envId].str_sparsity(), self.envs[envId].reprarms(1, latex=True)))
+            fig.suptitle("")
+            #fig.suptitle("Histogram straty dla różnych algorytmów\n${}$ ramion(a){}: {}".format(self.envs[envId].nbArms, self.envs[envId].str_sparsity(), self.envs[envId].reprarms(1, latex=True)))
             # XXX See https://stackoverflow.com/a/36542971/
             ax0 = fig.add_subplot(111, frame_on=False)  # add a big axes, hide frame
             ax0.grid(False)  # hide grid
             ax0.tick_params(labelcolor='none', top=False, bottom=False, left=False, right=False)  # hide tick and tick label of the big axes
             # Add only once the ylabel, xlabel, in the middle
-            ax0.set_ylabel("{} obserwacji, ${}$ powtórzeń".format("Częstotliwość" if normed else "Histogram i gęstość", self.repetitions))
-            ax0.set_xlabel("Wartość straty $R_T$, liczba iteracji $T = {}${}".format(self.horizon, self.signature))
+            ax0.set_ylabel("Częstość zaobserowanej straty", labelpad=15)
+            #ax0.set_ylabel("{} obserwacji, ${}$ powtórzeń".format("Częstotliwość" if normed else "Histogram i gęstość", self.repetitions))
+            ax0.set_xlabel("Wartość straty $R_T${}".format(self.signature), labelpad=15)
             for policyId, policy in enumerate(self.policies):
                 i, j = policyId % nrows, policyId // nrows
                 ax = axes[i, j] if ncols > 1 else axes[i]
@@ -882,9 +898,11 @@ class Evaluator(object):
                 ax.tick_params(axis='both', labelsize=8)  # XXX https://stackoverflow.com/a/11386056/
         else:
             fig = plt.figure()
-            plt.title("Histogram straty dla różnych algorytmów\n${}$ ramion(a){}: {}".format(self.envs[envId].nbArms, self.envs[envId].str_sparsity(), self.envs[envId].reprarms(1, latex=True)))
-            plt.xlabel("Wartość straty $R_T$, liczba iteracji $T = {}${}".format(self.horizon, self.signature))
-            plt.ylabel("{} obserwacji, ${}$ powtórzeń".format("Częstotliwość" if normed else "Liczba", self.repetitions))
+            plt.title("",{"fontsize": 1});
+            #plt.title("Histogram straty dla różnych algorytmów\n${}$ ramion(a){}: {}".format(self.envs[envId].nbArms, self.envs[envId].str_sparsity(), self.envs[envId].reprarms(1, latex=True)))
+            plt.xlabel("Wartość straty $R_T${}".format(self.signature), labelpad=15)
+            plt.ylabel("Częstość zaobserowanej straty", labelpad=15)
+            #plt.ylabel("{} obserwacji, ${}$ powtórzeń".format("Częstotliwość" if normed else "Liczba", self.repetitions))
             all_last_regrets = []
             labels = []
             for policyId, policy in enumerate(self.policies):

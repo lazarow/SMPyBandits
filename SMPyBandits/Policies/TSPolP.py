@@ -2,10 +2,11 @@ import random
 import math
 
 # with binomial interval
-class TSPol(object):
-    def __init__(self, nbArms, alpha=0.01, *args, **kwargs):
+class TSPolP(object):
+    def __init__(self, nbArms, alpha=0.01, z=1.96, *args, **kwargs):
         self.nbArms = nbArms
         self.alpha = alpha
+        self.z = z
         self.scoreboard = [[1 for i in range(nbArms)] for j in range(nbArms)]
         self.rewards = [0 for i in range(nbArms)]
         self.pulls = [0 for i in range(nbArms)]
@@ -14,7 +15,7 @@ class TSPol(object):
         random.seed()
 
     def __str__(self):
-        return "TSPol($\\alpha=" + str(self.alpha) + "$)"
+        return "TSPol+($\\alpha=" + str(self.alpha) + "$, $z=" + str(self.z) + "$)"
 
     def startGame(self):
         pass
@@ -32,7 +33,11 @@ class TSPol(object):
         if self.t >= self.nbArms:
             for i in range(self.nbArms):
                 if mean is None or mean < self.rewards[i] / self.pulls[i]:
-                    mean = self.rewards[i] / self.pulls[i]
+                    # normal approximation interval
+                    #mean = self.rewards[i] / self.pulls[i] + self.z / self.pulls[i] * math.sqrt(self.rewards[i] * (self.pulls[i] - self.rewards[i]) / self.pulls[i])
+                    # Wilson score interval
+                    z2 = self.z * self.z
+                    mean = (self.rewards[i] + z2 / 2) / (self.pulls[i] + z2) + self.z / (self.pulls[i] + z2) * math.sqrt((self.pulls[i] - self.rewards[i]) / self.pulls[i] + z2 / 4)
                     arm = i
             if self.defeated[arm]:
                 self.defeated[arm] = False
