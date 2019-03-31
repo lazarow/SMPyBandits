@@ -37,8 +37,13 @@ set NOPLOTS=True&& set N=1 && set T=50 && set N_JOBS=1 && python main.py configu
 ```
 pip install h5json
 ```
-
-
 ```
 ./bin/h5tojson *.hdf5 > *.json
 ```
+
+## Crop PDF
+
+```
+pip install pdfCropMargins
+```
+

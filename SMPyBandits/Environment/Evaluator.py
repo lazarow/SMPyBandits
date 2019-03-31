@@ -868,7 +868,7 @@ class Evaluator(object):
                 plt.title("",{"fontsize": 1});
                 #plt.title("Histogram straty dla {}\n${}$ ramion(a){}: {}".format(policy.__cachedstr__, self.envs[envId].nbArms, self.envs[envId].str_sparsity(), self.envs[envId].reprarms(1, latex=True)))
                 plt.xlabel("Wartość straty $R_T${}".format(self.signature), labelpad=15)
-                plt.ylabel("Częstość zaobserowanej straty", labelpad=15)
+                plt.ylabel("Częstość zaobserowanej całkowitej straty", labelpad=15)
                 #plt.ylabel("{} obserwacji, ${}$ powtórzeń".format("Częstotliwość" if normed else "Liczba", self.repetitions))
                 last_regrets = self.getLastRegrets(policyId, envId=envId, moreAccurate=moreAccurate)
                 sns.distplot(last_regrets, hist=True, bins=nbbins, color=colors[policyId], kde_kws={'cut': 0, 'marker': markers[policyId], 'markevery': (policyId / 50., 0.1)})
@@ -886,7 +886,7 @@ class Evaluator(object):
             ax0.grid(False)  # hide grid
             ax0.tick_params(labelcolor='none', top=False, bottom=False, left=False, right=False)  # hide tick and tick label of the big axes
             # Add only once the ylabel, xlabel, in the middle
-            ax0.set_ylabel("Częstość zaobserowanej straty", labelpad=15)
+            ax0.set_ylabel("Częstość zaobserowanej całkowitej straty", labelpad=15)
             #ax0.set_ylabel("{} obserwacji, ${}$ powtórzeń".format("Częstotliwość" if normed else "Histogram i gęstość", self.repetitions))
             ax0.set_xlabel("Wartość straty $R_T${}".format(self.signature), labelpad=15)
             for policyId, policy in enumerate(self.policies):
@@ -901,7 +901,7 @@ class Evaluator(object):
             plt.title("",{"fontsize": 1});
             #plt.title("Histogram straty dla różnych algorytmów\n${}$ ramion(a){}: {}".format(self.envs[envId].nbArms, self.envs[envId].str_sparsity(), self.envs[envId].reprarms(1, latex=True)))
             plt.xlabel("Wartość straty $R_T${}".format(self.signature), labelpad=15)
-            plt.ylabel("Częstość zaobserowanej straty", labelpad=15)
+            plt.ylabel("Częstość zaobserowanej całkowitej straty", labelpad=15)
             #plt.ylabel("{} obserwacji, ${}$ powtórzeń".format("Częstotliwość" if normed else "Liczba", self.repetitions))
             all_last_regrets = []
             labels = []
