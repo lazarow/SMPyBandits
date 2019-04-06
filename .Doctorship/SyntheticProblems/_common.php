@@ -34,3 +34,21 @@ function getExperiment()
     }
     return include $experimentFilename;
 }
+
+function deleteDir($path) {
+    if (! is_dir($path)) {
+        throw new InvalidArgumentException("$path must be a directory");
+    }
+    if (substr($path, strlen($path) - 1, 1) != '/') {
+        $path .= '/';
+    }
+    $files = glob($path . '*', GLOB_MARK);
+    foreach ($files as $file) {
+        if (is_dir($file)) {
+            deleteDir($file);
+        } else {
+            unlink($file);
+        }
+    }
+    rmdir($path);
+}

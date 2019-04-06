@@ -162,9 +162,6 @@ if __name__ == '__main__':
         evaluation.printNumberOfCPDetections(envId)
         if debug_memory: display_top_tracemalloc()  # DEBUG
 
-        if not do_plots:
-            break
-
         # Sub folder with a useful name
         subfolder = "SP__K{}_T{}_N{}__{}_algos".format(env.nbArms, configuration['horizon'], configuration['repetitions'], len(configuration['policies']))
         plot_dir = os.path.join(PLOT_DIR, subfolder)
@@ -174,6 +171,17 @@ if __name__ == '__main__':
         savefig = mainfig
         picklename = mainfig + '.pickle'
         h5pyname   = mainfig + '.hdf5'
+
+        if not do_plots:
+            if os.path.isdir(plot_dir):
+                print("{} is already a directory here...".format(plot_dir))
+            elif os.path.isfile(plot_dir):
+                raise ValueError("[ERROR] {} is a file, cannot use it as a directory !".format(plot_dir))
+            else:
+                mkdir(plot_dir)
+            if USE_HD5:
+                evaluation.saveondisk(h5pyname)
+            break
 
         if saveallfigs:
             # Create the sub folder

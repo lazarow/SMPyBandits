@@ -2,6 +2,7 @@
 return [
     'queue.filepath' => __DIR__ . '/../queue.json',
     'configuration.template.filepath' => __DIR__ . '/../templates/configuration_template.py',
-    'findings.dir' => __DIR__ . '/../output',
+    'output.dir' => __DIR__ . '/../output',
     'smpybandits.dir' => __DIR__ . '/../../../SMPyBandits',
+    'h5tojson' => __DIR__ . '/../../../Scripts/h5tojson.exe',
 ];
