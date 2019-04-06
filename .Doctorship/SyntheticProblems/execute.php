@@ -38,6 +38,9 @@ for ($i = 0; $i < count($queue); ++$i) {
     ]));
     // Copying the SMPyBandits configuration file
     copy($experimentDir . '/configuration_experiment.py', $configuration['smpybandits.dir'] . '/configuration_experiment.py');
+    
+    // ...
+    
     // Removing the SMPyBandits configuration file
     unlink($configuration['smpybandits.dir'] . '/configuration_experiment.py');
     // Conducting the experiment END
