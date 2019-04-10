@@ -2,3 +2,6 @@ queue.json
 configuration_doctorship.py
 /output/*
 !/output/.gitkeep
+!/standings/
+/standings/*
+!/standings/.gitkeep

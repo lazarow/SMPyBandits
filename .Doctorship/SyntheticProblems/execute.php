@@ -42,11 +42,11 @@ for ($i = 0; $i < count($queue); ++$i) {
     copy($experimentDir . '/configuration_experiment.py', $configuration['smpybandits.dir'] . '/configuration_experiment.py');
     // Conducting the experiment
     $smpybanditsOutput = utf8_encode(shell_exec(($isWin ? 'set NOPLOTS=True&& ' : 'NOPLOTS=True ') . 'python ' . $configuration['smpybandits.dir'] . '/main.py configuration_experiment'));
-    file_put_contents($configuration['output.dir'] . '/' . $experiment['md5'] . '/smpybandits_output.txt', $smpybanditsOutput);
+    file_put_contents($experimentDir . '/smpybandits_output.txt', $smpybanditsOutput);
     // Copying the HDF5 file (raw data)
     $plotsDir = $configuration['smpybandits.dir'] . '/plots/SP__K' . count($experiment['arms']) . '_T' . $h . '_N' . $experiment['repetitions'] . '__1_algos';
     foreach (glob($plotsDir . '/*.hdf5') as $filename) {
-        shell_exec($configuration['h5tojson'] . ' "' . $filename . '" > "' . $configuration['output.dir'] . '/' . $experiment['md5'] . '/raw_data.json"');
+        shell_exec($configuration['h5tojson'] . ' "' . $filename . '" > "' . $experimentDir . '/raw_data.json"');
     }
     // Removing SMPyBandits plots folder
     deleteDir($plotsDir);
@@ -55,6 +55,7 @@ for ($i = 0; $i < count($queue); ++$i) {
     $regretMatches = [];
     preg_match_all($regretPattern, $smpybanditsOutput, $regretMatches);
     foreach (array_keys($regretMatches[0]) as $idx) {
+        $experiment['policy']['name'] = trim($regretMatches[2][$idx]);
         $experiment['regret']['min'] = (float) $regretMatches[3][$idx];
         $experiment['regret']['mean'] = (float) $regretMatches[4][$idx];
         $experiment['regret']['median'] = (float) $regretMatches[5][$idx];
@@ -76,12 +77,12 @@ for ($i = 0; $i < count($queue); ++$i) {
         $experiment['memory']['st.dev'] = (float) $memoryMatches[4][$idx] * ($memoryMatches[3][$idx] == 'B' ? 1 : ($memoryMatches[3][$idx] == 'KiB' ? 1024 : 1000 * 1024));
     }
     // Saving the experiment
-    file_put_contents($configuration['output.dir'] . '/' . $experiment['md5'] . '/results.json', json_encode($experiment, JSON_PRETTY_PRINT));
+    file_put_contents($experimentDir . '/results.json', json_encode($experiment, JSON_PRETTY_PRINT));
     // Removing the SMPyBandits configuration file
     unlink($configuration['smpybandits.dir'] . '/configuration_experiment.py');
     // Conducting the experiment END
     echo '[i] The experiment no. ' . $i . ' has been conducted' . PHP_EOL;
     $elapsed = microtime(true) - $start;
     echo '[_] The experiment no. ' . $i . ' time in seconds: ' . $elapsed . PHP_EOL;
-    file_put_contents($configuration['output.dir'] . '/' . $experiment['md5'] . '/experiment.end', 'done');
+    file_put_contents($experimentDir . '/experiment.end', 'done');
 }
