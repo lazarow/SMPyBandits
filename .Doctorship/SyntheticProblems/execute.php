@@ -61,14 +61,14 @@ for ($i = 0; $i < count($queue); ++$i) {
         $experiment['regret']['max'] = (float) $regretMatches[6][$idx];
         $experiment['regret']['st.dev'] = (float) $regretMatches[7][$idx];
     }
-    $timePattern = "/For policy #[0-9]+ called '(.*)' \.\.\.\s+([0-9\.-e\+]+) ± ([0-9\.-e]+)/mi";
+    $timePattern = "/For policy #[0-9]+ called '(.*)' \.\.\.\s+([0-9\.-e\+]+) [±Â]+? ([0-9\.-e]+)/mi";
     $timeMatches = [];
     preg_match_all($timePattern, $smpybanditsOutput, $timeMatches);
     foreach (array_keys($timeMatches[0]) as $idx) {
         $experiment['time']['mean'] = (float) $timeMatches[2][$idx];
         $experiment['time']['st.dev'] = (float) $timeMatches[3][$idx];
     }
-    $memoryPattern = "/For policy #[0-9]+ called '(.*)' \.\.\.\s+([0-9\.-e]+) (B|KiB|MiB) ± ([0-9\.-e]+)/mi";
+    $memoryPattern = "/For policy #[0-9]+ called '(.*)' \.\.\.\s+([0-9\.-e]+) (B|KiB|MiB) [±Â]+? ([0-9\.-e]+)/mi";
     $memoryMatches = [];
     preg_match_all($memoryPattern, $smpybanditsOutput, $memoryMatches);
     foreach (array_keys($memoryMatches[0]) as $idx) {
@@ -76,7 +76,7 @@ for ($i = 0; $i < count($queue); ++$i) {
         $experiment['memory']['st.dev'] = (float) $memoryMatches[4][$idx] * ($memoryMatches[3][$idx] == 'B' ? 1 : ($memoryMatches[3][$idx] == 'KiB' ? 1024 : 1000 * 1024));
     }
     // Saving the experiment
-    file_put_contents($configuration['output.dir'] . '/' . $experiment['md5'] . '/experiment.json', json_encode($experiment, JSON_PRETTY_PRINT));
+    file_put_contents($configuration['output.dir'] . '/' . $experiment['md5'] . '/results.json', json_encode($experiment, JSON_PRETTY_PRINT));
     // Removing the SMPyBandits configuration file
     unlink($configuration['smpybandits.dir'] . '/configuration_experiment.py');
     // Conducting the experiment END
