@@ -1,4 +1,5 @@
 queue.json
+experiment-queue.json
 configuration_doctorship.py
 /output/*
 !/output/.gitkeep

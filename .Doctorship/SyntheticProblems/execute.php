@@ -86,3 +86,4 @@ for ($i = 0; $i < count($queue); ++$i) {
     echo '[_] The experiment no. ' . $i . ' time in seconds: ' . $elapsed . PHP_EOL;
     file_put_contents($experimentDir . '/experiment.end', 'done');
 }
+echo '[i] All experiments have been conducted.' . PHP_EOL;

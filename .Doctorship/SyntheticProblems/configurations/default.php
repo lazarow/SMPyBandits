@@ -1,6 +1,6 @@
 <?php
 return [
-    'queue.filepath' => __DIR__ . '/../queue.json',
+    'queue.filepath' => __DIR__ . '/../experiment-queue.json',
     'configuration.template.filepath' => __DIR__ . '/../templates/configuration_template.py',
     'output.dir' => __DIR__ . '/../output',
     'smpybandits.dir' => __DIR__ . '/../../../SMPyBandits',
