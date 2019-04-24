@@ -32,7 +32,7 @@ function getExperiment()
     if (file_exists($experimentFilename) === false) {
         exit('[!] The experiment file ' . basename($experimentFilename) . ' does not exist');
     }
-    return include $experimentFilename;
+    return array_merge(['name' => $options['e']], include $experimentFilename);
 }
 
 function deleteDir($path) {
