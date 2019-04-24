@@ -16,4 +16,4 @@ foreach ($experiment['arms'] as $arms) {
     }
 }
 file_put_contents($configuration['queue.filepath'], json_encode($queue));
-echo '[i] The queue file has been generated in the path:' . realpath($configuration['queue.filepath']) . PHP_EOL;
+echo '[i] The queue file has been generated in the path: ' . realpath($configuration['queue.filepath']) . PHP_EOL;
