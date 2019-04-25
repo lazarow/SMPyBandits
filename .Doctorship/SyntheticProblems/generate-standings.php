@@ -15,6 +15,10 @@ $arms = $experiment['arms'];
 foreach ($experiment['arms'] as $arms) {
     $k = count($arms);
     $experimentMd5 = substr(md5(json_encode($arms)), -7, 7);
+    $bestArm = $arms[0];
+    $h = count($arms) < 3 ? 200 : 3 * ceil(array_reduce(array_slice($arms, 1), function ($carry, $arm) use ($bestArm) {
+        return $carry + 1 / pow($bestArm - $arm, 2);
+    }, 0));
     $results = [];
     foreach ($experiment['policies'] as $policy) {
         $md5 = md5(json_encode($policy) . json_encode($arms) . $experiment['repetitions']);
@@ -39,38 +43,50 @@ foreach ($experiment['arms'] as $arms) {
         return cmp($results[$idx1]['memory']['mean'], $results[$idx2]['memory']['mean']);
     });
     # <editor-fold defaultstate="collapsed" desc="Latex Table Generation">
+    $hasTSPol = $hasUCB = false;
+    $limit = isset($options['limit']) ? (int) $options['limit'] : 999;
     $latexTable = '\\begin{table}[!ht]
 \\begin{minipage}{\\textwidth}\\begin{center}
-\\caption{Uśrednione wyniki po ' . $repetitions . ' powtórzeniach posortowane wg. całkowitej straty, dla problemu: [ ';
+\\caption{Uśrednione po ' . $repetitions . ' powtórzeniach wyniki eksperymentu posortowane wg. całkowitej straty dla problemu $ \mathcal{A} {=} \{ $ ';
     for ($i = 0; $i < count($arms); ++$i) {
-        $latexTable .= ($i === 0 ? '{\boldmath' : '; ') . '$\\Bernoulli{' . strtr($arms[$i], ['.' => '{,}']) . '}$' . ($i === 0 ? '}' : '');
+        $latexTable .= ($i === 0 ? '{\boldmath' : ', ') . '$\\Bernoulli{' . strtr($arms[$i], ['.' => '{,}']) . '}$' . ($i === 0 ? '}' : '');
     }
-    $latexTable .= ' ], liczba ramion $K{=}' . count($arms) . '$.}
+    $latexTable .= ' $ \} $ z liczbą ramion $K{=}' . count($arms) . '$ oraz skończoną liczbą iteracji $ H {=} ' . $h . '$.}
 \\label{table:' . $experimentMd5 . '}
 \\rowcolors{4}{white}{lightgray1}
-\\begin{tabular}{cp{170pt}rrrrrr}
+\\begin{tabular}{cp{160pt}rrrrrr}
     \\hline
-    \\multirow{2}{*}[-0.7ex]{\#}
-    & \\multirow{2}{*}[-0.7ex]{\\centering Algorytm strategii wyboru}
-    & \\multicolumn{2}{|m{70pt}}{\\centering \vspace{2pt} Całkowita oczekiwana strata}
-    & \\multicolumn{2}{|m{70pt}}{\\centering Czas wykonania ($s$)}
-    & \\multicolumn{2}{|m{60pt}}{\\centering Zużyta pamięć ($B$)}
+    \\multirow{2}{*}[-0.6ex]{\#}
+    & \\multirow{2}{*}[-0.6ex]{\\centering Algorytm strategii wyboru}
+    & \\multicolumn{2}{|m{90pt}}{\\centering \vspace{2pt} \footnotesize Całkowita oczekiwana strata}
+    & \\multicolumn{2}{|m{70pt}}{\\centering \footnotesize Czas wykonania ($s$)}
+    & \\multicolumn{2}{|m{70pt}}{\\centering \footnotesize Zużyta pamięć ($B$)}
     \\\\ \\cline{3-8}
     &
-    & \\multicolumn{1}{|b{33pt}}{\\centering \\vspace{2pt} $\\bar{x}$} & \\multicolumn{1}{|c}{$SD$}
-    & \\multicolumn{1}{|b{33pt}}{\\centering \\vspace{2pt} $\\bar{x}$} & \\multicolumn{1}{|c}{$SD$}
-    & \\multicolumn{1}{|b{30pt}}{\\centering \\vspace{2pt} $\\bar{x}$} & \\multicolumn{1}{|c}{$SD$}
+    & \\multicolumn{1}{|b{45pt}}{\\centering \\vspace{2pt} \footnotesize $\\bar{x}$} & \\multicolumn{1}{|c}{\footnotesize $SD$}
+    & \\multicolumn{1}{|b{35pt}}{\\centering \\vspace{2pt} \footnotesize $\\bar{x}$} & \\multicolumn{1}{|c}{\footnotesize $SD$}
+    & \\multicolumn{1}{|b{35pt}}{\\centering \\vspace{2pt} \footnotesize $\\bar{x}$} & \\multicolumn{1}{|c}{\footnotesize $SD$}
     \\\\ \\hline \\hline
 ';
-    for ($i = 0; $i < count($standings['regret']); ++$i) {
+    for ($i = 0; ($limit > 0 || $hasTSPol === false || $hasUCB === false) && $i < count($standings['regret']); ++$i) {
+        $idx = $standings['regret'][$i];
         $result = $results[$standings['regret'][$i]];
-        $latexTable .= '    ' . ($i + 1) . ' & ' . $result['policy']['name']
-            . ' & $' . number_format($result['regret']['mean'], 2, '{,}', '') . '$'
-            . ' & $\pm' . number_format($result['regret']['st.dev'], 2, '{,}', '') . '$'
-            . ' & $' . number_format($result['time']['mean'], 4, '{,}', '') . '$'
-            . ' & $\pm' . number_format($result['time']['st.dev'], 4, '{,}', '') . '$'
-            . ' & $' . number_format($result['memory']['mean'], 0, '{,}', '') . '$'
-            . ' & $\pm' . number_format($result['memory']['st.dev'], 0, '{,}', '') . '$'
+        if ($result['policy']['archtype'] === 'TSPolP') {
+            $hasTSPol = true;
+        } else if ($result['policy']['archtype'] === 'UCB') {
+            $hasUCB = true;
+        } else if ($limit <= 0) {
+            continue;
+        } else {
+            $limit--;
+        }
+        $latexTable .= '    \footnotesize ' . ($i + 1) . ' & \footnotesize ' . $result['policy']['name']
+            . ' & \footnotesize ' . ($standings['regret'][0] === $idx ? '\boldmath' : '') . '$' . number_format($result['regret']['mean'], 2, '{,}', '') . '$'
+            . ' & \footnotesize $\pm' . number_format($result['regret']['st.dev'], 2, '{,}', '') . '$'
+            . ' & \footnotesize ' . ($standings['time'][0] === $idx ? '\boldmath' : '') . '$' . number_format($result['time']['mean'], 4, '{,}', '') . '$'
+            . ' & \footnotesize $\pm' . number_format($result['time']['st.dev'], 4, '{,}', '') . '$'
+            . ' & \footnotesize ' . ($standings['memory'][0] === $idx ? '\boldmath' : '') . '$' . number_format($result['memory']['mean'], 0, '{,}', '') . '$'
+            . ' & \footnotesize $\pm' . number_format($result['memory']['st.dev'], 0, '{,}', '') . '$'
             . '\\\\
 ';
     }

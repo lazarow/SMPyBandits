@@ -6,7 +6,7 @@
  * [_] debug
  */
 
-$options = getopt('c:e:', ['force']);
+$options = getopt('c:e:', ['force','limit:']);
 
 function getConfiguration()
 {
