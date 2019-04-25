@@ -8,5 +8,6 @@ return [
     'policies' => [
         ['archtype' => 'TSPolP', 'params' => []],
         ['archtype' => 'UCB', 'params' => []],
+        ['archtype' => 'AdBandits', 'params' => ['alpha' => '0.5', 'horizon' => 'HORIZON']],
     ]
 ];
