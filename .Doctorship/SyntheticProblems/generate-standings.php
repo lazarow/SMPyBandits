@@ -13,12 +13,14 @@ function cmp($val1, $val2) {
 $repetitions = $experiment['repetitions'];
 $arms = $experiment['arms'];
 $summativeStandings = [];
-foreach ($experiment['policies'] as $policy) {
-    $summativeStandings[] = [
+$policies = [];
+foreach ($experiment['policies'] as $idx => $policy) {
+    $summativeStandings[$idx] = [
         'regret' => [],
         'time' => [],
         'memory' => []
     ];
+    $policies[$idx] = '';
 }
 foreach ($experiment['arms'] as $arms) {
     $k = count($arms);
@@ -28,13 +30,14 @@ foreach ($experiment['arms'] as $arms) {
         return $carry + 1 / pow($bestArm - $arm, 2);
     }, 0));
     $results = [];
-    foreach ($experiment['policies'] as $policy) {
+    foreach ($experiment['policies'] as $idx => $policy) {
         $md5 = md5(json_encode($policy) . json_encode($arms) . $experiment['repetitions']);
         $experimentDir = $configuration['output.dir'] . '/' . $md5;
         if (file_exists($experimentDir . '/results.json') === false) {
             exit('[!] The experiment does not have results for policy: ' . $policy['archtype'] . ' and arms: ' . implode('; ', $arms) . '.');
         }
-        $results[] = json_decode(file_get_contents($experimentDir . '/results.json'), true);
+        $results[$idx] = json_decode(file_get_contents($experimentDir . '/results.json'), true);
+        $policies[$idx] = $results[$idx]['policy']['name'];
     }
     $standings = [
         'regret' => array_keys($results),
@@ -66,9 +69,9 @@ foreach ($experiment['arms'] as $arms) {
     \\hline
     \\multirow{2}{*}[-0.6ex]{\#}
     & \\multirow{2}{*}[-0.6ex]{\\centering Algorytm strategii wyboru}
-    & \\multicolumn{2}{|m{90pt}}{\\centering \vspace{2pt} \footnotesize Całkowita oczekiwana strata}
+    & \\multicolumn{2}{|m{90pt}}{\\centering \vspace{2pt} \footnotesize Całkowita uzyskana strata}
     & \\multicolumn{2}{|m{80pt}}{\\centering \footnotesize Czas wykonania ($s$)}
-    & \\multicolumn{2}{|m{70pt}}{\\centering \footnotesize Zużyta pamięć ($B$)}
+    & \\multicolumn{2}{|m{70pt}}{\\centering \footnotesize Zajęta pamięć ($B$)}
     \\\\ \\cline{3-8}
     &
     & \\multicolumn{1}{|b{45pt}}{\\centering \\vspace{2pt} \footnotesize $\\bar{x}$} & \\multicolumn{1}{|c}{\footnotesize $SD$}
@@ -88,7 +91,7 @@ foreach ($experiment['arms'] as $arms) {
         } else {
             $limit--;
         }
-        $latexTable .= '    \footnotesize ' . ($i + 1) . ' & \footnotesize ' . strtr($result['policy']['name'], ['=' => '{=}'])
+        $latexTable .= '    \footnotesize $' . ($i + 1) . '$ & \footnotesize ' . strtr($result['policy']['name'], ['=' => '{=}'])
             . ' & \footnotesize ' . ($standings['regret'][0] === $idx ? '\boldmath' : '') . '$' . number_format($result['regret']['mean'], 2, '{,}', '') . '$'
             . ' & \footnotesize $\pm' . number_format($result['regret']['st.dev'], 2, '{,}', '') . '$'
             . ' & \footnotesize ' . ($standings['time'][0] === $idx ? '\boldmath' : '') . '$' . number_format($result['time']['mean'], 4, '{,}', '') . '$'
@@ -107,17 +110,60 @@ foreach ($experiment['arms'] as $arms) {
     # <editor-fold defaultstate="collapsed" desc="Gather The Summative Standings">
     foreach (['regret', 'time', 'memory'] as $metrics) {
         for ($i = 0; $i < count($standings[$metrics]); ++$i) {
-            $summativeStandings[$standings[$metrics][$i]][$metrics][] = $i;
+            $summativeStandings[$standings[$metrics][$i]][$metrics][] = ($i + 1);
         }
     }
     # </editor-fold>
 }
 # <editor-fold defaultstate="collapsed" desc="The Latex Summative Standings Table">
-    foreach (['regret', 'time', 'memory'] as $metrics) {
-        for ($i = 0; $i < count($standings[$metrics]); ++$i) {
-            $summativeStandings[$standings[$metrics][$i]][$metrics][] = $i;
-        }
+$nofProblems = count($experiment['arms']);
+$nofPolicies = count($experiment['policies']);
+$metricsLabels = [
+    'regret' => 'całkowitą uzyskaną stratę',
+    'time' => 'czas wykonania',
+    'memory' => 'zajętą pamięć'
+]; 
+foreach (['regret', 'time', 'memory'] as $metrics) {
+    foreach (array_keys($experiment['policies']) as $idx) {
+        $summativeStandings[$idx][$metrics][] = number_format(array_reduce($summativeStandings[$idx][$metrics], function ($carry, $place) use ($nofProblems, $nofPolicies) {
+            return $carry + 1/$nofProblems * (1 - ($place - 1) / ($nofPolicies - 1));
+        }, 0), 2, '{,}', '');
+        $summativeStandings[$idx][$metrics] = array_map(function ($value) {
+            return ($value === 1 ? '\\boldmath' : '') . '$' . $value . '$';
+        }, $summativeStandings[$idx][$metrics]);
     }
+    uasort($summativeStandings, function ($policy1, $policy2) use ($metrics, $nofProblems) {
+        return cmp($policy2[$metrics][$nofProblems], $policy1[$metrics][$nofProblems]);
+    });
+    $latexTable = '\\begin{table}[!ht]
+\\begin{minipage}{\\textwidth}\\begin{center}
+\\caption{Zestawienie wyników, w którym algorytmy strategii wyboru zostały posortowane wg. wartości ważonej funkcji kompromisu wyliczonej na podstawie 
+miejsc w rankingach dla założonych w eksperymencie równoważnych problemów ze względu na ' . $metricsLabels[$metrics] . '.}
+\\label{table:' . $experiment['name'] . '_' . $metrics . '}
+\\begin{tabularx}{\\textwidth}{cX' . str_repeat('c', $nofProblems) . 'r}
+\\hline
+    \\# & Algorytm strategii wyboru';
+    for ($i = 1; $i <= $nofProblems; ++$i) {
+        $latexTable .= ' & \footnotesize ' . $i . '$^\star$';
+    }
+    $latexTable .= ' & \footnotesize $A^{WSM}$$^{\star\star}$ \\\\
+\\hline \\hline
+';
+    $place = 1;
+    foreach ($summativeStandings as $policyIdx => $results) {
+        $latexTable .= '\rowcolor{' . ($place % 2 == 1 ? 'white' : 'lightgray1') . '}
+';
+        $latexTable .= '\footnotesize $' . $place++ . '$ & \footnotesize ' . strtr($policies[$policyIdx], ['=' => '{=}']) . ' & \footnotesize ' . implode(' & \footnotesize ', $results[$metrics]) . ' \\\\
+';
+    }
+    $latexTable .= '\\hline
+\\multicolumn{' . ($nofProblems + 3) . '}{@{}l}{\footnotesize $^\star$ Numer problemu, dane w tabeli oznaczają miejsce w rankingu.} \\\\
+\\multicolumn{' . ($nofProblems + 3) . '}{@{}l}{\footnotesize $^{\star\star}$ $A^{WSM}{=}\sum\nolimits_{j=1}^{' . $nofProblems . '} (1{/}' . $nofProblems . ') (1 - (a_{ij} {-} 1) {/} ' . ($nofPolicies - 1) . ')$ gdzie $ a_{ij} $ to miejsce zajęte przez $ i $-tą strategię w $ j $-tym problemie.}
+\\end{tabularx}
+\\end{center}\\end{minipage}
+\\end{table}';
+    file_put_contents($standingsDir . '/table_' . $metrics . '.tex', $latexTable);
+}
 # </editor-fold>
 file_put_contents($standingsDir . '/standings.end', 'done');
 echo '[i] The standings have been generated in the path: ' . realpath($standingsDir) . PHP_EOL;
