@@ -3,6 +3,9 @@ experiment-queue.json
 configuration_doctorship.py
 /output/*
 !/output/.gitkeep
-!/standings/
-/standings/*
-!/standings/.gitkeep
+!/output/standings/
+/output/standings/*
+!/output/standings/.gitkeep
+!/output/plots/
+/output/plots/*
+!/output/plots/.gitkeep
