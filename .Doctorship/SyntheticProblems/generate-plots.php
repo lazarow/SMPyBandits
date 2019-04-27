@@ -29,26 +29,52 @@ foreach ($experiment['arms'] as $arms) {
         $policies[$idx] = json_decode(file_get_contents($experimentDir . '/results.json'), true)['policy']['name'];
     }
     # <editor-fold defaultstate="collapsed" desc="Regret Plot">
+    $nofDataPoints = count($results[0]['/env_0/cumulatedRegret']);
     $plots['regret' . $md5] = '\\begin{tikzpicture}
 \\begin{axis}[
-    title={XYZ},
-    xlabel={X},
-    ylabel={Y},
+    width=16.5cm,
+    height=10cm,
+    legend entries = {' . array_reduce($policies, function ($carry, $name) {
+        return $carry . strtr($name, ['='=>'{=}']) . '\\\\';
+    }, '') . '},
+    xlabel={Krok czasowy $t$},
+    xticklabel style={/pgf/number format/1000 sep=},
+    ylabel={Całkowita uzyskana strata $ R_t{=}t $},
     xmin=0, xmax=' . $h . ',
-    ymin=0, ymax=' . max(array_map(function ($results) { return max($results['/env_0/cumulatedRegret']); }, $results)) . ',
+    ymin=0, ymax=' . max(array_map(function ($data) { return max($data['/env_0/cumulatedRegret']); }, $results)) . ',
     legend pos=north west,
+    legend cell align={left},
     ymajorgrids=true,
     grid style=dashed,
+    mark repeat=' . floor($nofDataPoints / 15) . ',
+    mark phase=' . floor($nofDataPoints / 15) . '
 ]
 ';
-    
+    foreach ($results as $policyIdx => $data) {
+        $t = 0;
+        $plots['regret' . $md5] .= '\\addplot coordinates {
+    ' . implode('', array_map(function ($value) {
+        global $t;
+        return '(' . $t++ .',' . $value . ')';
+    }, $data['/env_0/cumulatedRegret'])) . '
+};
+';
+    }
     $plots['regret' . $md5] .= '\\end{axis}
 \\end{tikzpicture}';
     # </editor-fold>
 }
 $template = file_get_contents($configuration['plot.template.filepath']);
 foreach ($plots as $id => $plot) {
-    
+    $texPlotPath = $plotsDir . '/' . $id . '.tex';
+    file_put_contents($texPlotPath, strtr($template, ['{{tikzpicture}}' => $plot]));
+    shell_exec('pdflatex -interaction=nonstopmode -shell-escape ' . realpath($texPlotPath));
+    foreach (glob($id . '*') as $filename) {
+        if (strpos($filename, '.pdf') !== false) {
+            copy($filename, $plotsDir . '/' . $id . '.pdf');
+        }
+        unlink($filename);
+    }
 }
 file_put_contents($plotsDir . '/plots.end', 'done');
 echo '[i] The standings have been generated in the path: ' . realpath($plotsDir) . PHP_EOL;

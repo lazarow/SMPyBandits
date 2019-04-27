@@ -5,5 +5,6 @@ return [
     'output.dir' => __DIR__ . '/../output',
     'smpybandits.dir' => __DIR__ . '/../../../SMPyBandits',
     'h5tojson' => __DIR__ . '/../../../Scripts/h5tojson.exe',
-    'plot.template.filepath' => __DIR__ . '/../templates/plot_template.py',
+    'plot.template.filepath' => __DIR__ . '/../templates/plot_template.tex',
+    'pdflatex' => 'pdflatex',
 ];
