@@ -4,7 +4,7 @@ $configuration = getConfiguration();
 $experiment = getExperiment();
 $plotsDir = $configuration['output.dir'] . '/plots/' . $experiment['name'];
 if (array_key_exists('force', $options) === false && file_exists($plotsDir) && file_exists($plotsDir . '/plots.end')) {
-    exit('[_] The plots of the experiments already exists');
+    exit('[_] The plots of the experiments already exists' . PHP_EOL);
 }
 @mkdir($plotsDir);
 $plots = [];
@@ -20,7 +20,7 @@ foreach ($experiment['arms'] as $arms) {
     foreach ($experiment['policies'] as $idx => $policy) {
         $experimentDir = $configuration['output.dir'] . '/' . md5(json_encode($policy) . json_encode($arms) . $experiment['repetitions']);
         if (file_exists($experimentDir . '/raw_data.json') === false) {
-            exit('[!] The experiment does not have raw data for policy: ' . $policy['archtype'] . ' and arms: ' . implode('; ', $arms) . '.');
+            exit('[!] The experiment does not have raw data for policy: ' . $policy['archtype'] . ' and arms: ' . implode('; ', $arms) . '.' . PHP_EOL);
         }
         $results[$idx] = [];
         foreach (json_decode(file_get_contents($experimentDir . '/raw_data.json'), true)['datasets'] as $dataset) {

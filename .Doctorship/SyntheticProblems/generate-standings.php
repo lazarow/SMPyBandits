@@ -4,7 +4,7 @@ $configuration = getConfiguration();
 $experiment = getExperiment();
 $standingsDir = $configuration['output.dir'] . '/standings/' . $experiment['name'];
 if (array_key_exists('force', $options) === false && file_exists($standingsDir) && file_exists($standingsDir . '/standings.end')) {
-    exit('[_] The standings of the experiments already exists');
+    exit('[_] The standings of the experiments already exists' . PHP_EOL);
 }
 @mkdir($standingsDir);
 function cmp($val1, $val2) {
@@ -34,7 +34,7 @@ foreach ($experiment['arms'] as $arms) {
         $md5 = md5(json_encode($policy) . json_encode($arms) . $experiment['repetitions']);
         $experimentDir = $configuration['output.dir'] . '/' . $md5;
         if (file_exists($experimentDir . '/results.json') === false) {
-            exit('[!] The experiment does not have results for policy: ' . $policy['archtype'] . ' and arms: ' . implode('; ', $arms) . '.');
+            exit('[!] The experiment does not have results for policy: ' . $policy['archtype'] . ' and arms: ' . implode('; ', $arms) . '.' . PHP_EOL);
         }
         $results[$idx] = json_decode(file_get_contents($experimentDir . '/results.json'), true);
         $policies[$idx] = $results[$idx]['policy']['name'];
