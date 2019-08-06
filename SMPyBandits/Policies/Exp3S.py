@@ -76,7 +76,8 @@ class Exp3S(Exp3):
         self.weights = np.full(nbArms, 1. / nbArms)  #: Weights on the arms
 
     def __str__(self):
-        return r"Exp3.S($T={}$, $\Upsilon_T={}$, $\alpha={:.6g}$, $\gamma={:.6g}$)".format(self.horizon, self.max_nb_random_events, self._alpha, self._gamma)
+        # return r"Exp3.S($T={}$, $\Upsilon_T={}$, $\alpha={:.6g}$, $\gamma={:.6g}$)".format(self.horizon, self.max_nb_random_events, self._alpha, self._gamma)
+        return "Exp3.S"
 
     # This decorator @property makes this method an attribute, cf. https://docs.python.org/3/library/functions.html#property
     @property
@@ -110,16 +111,11 @@ class Exp3S(Exp3):
         trusts = ((1 - self.gamma) * self.weights / np.sum(self.weights)) + (self.gamma / self.nbArms)
         # XXX Handle weird cases, slow down everything but safer!
         if not np.all(np.isfinite(trusts)):
-            # XXX some value has non-finite trust, probably on the first steps
-            # 1st case: all values are non-finite (nan): set trusts to 1/N uniform choice
-            if np.all(~np.isfinite(trusts)):
-                trusts = np.full(self.nbArms, 1. / self.nbArms)
-            # 2nd case: only few values are non-finite: set them to 0
-            else:
-                trusts[~np.isfinite(trusts)] = 0
+            trusts[~np.isfinite(trusts)] = 0  # set bad values to 0
         # Bad case, where the sum is so small that it's only rounding errors
+        # or where all values where bad and forced to 0, start with trusts=[1/K...]
         if np.isclose(np.sum(trusts), 0):
-                trusts = np.full(self.nbArms, 1. / self.nbArms)
+            trusts[:] = 1.0 / self.nbArms
         # Normalize it and return it
         return trusts / np.sum(trusts)
 
@@ -145,6 +141,11 @@ class Exp3S(Exp3):
         if self.unbiased:
             reward = reward / self.trusts[arm]
         # Multiplicative weights + uniform share of previous weights (alpha is used for this)
-        self.weights[arm] = self.weights[arm] * np.exp(reward * (self.gamma / self.nbArms)) + CONSTANT_e * (self.alpha / self.nbArms) * np.sum(self.weights)
-        # !!! DONT Renormalize weights at each step
+        old_weights = self.weights[:]
+        sum_of_weights = np.sum(old_weights)
+        for otherArm in range(self.nbArms):
+            if otherArm != arm:
+                self.weights[otherArm] = old_weights[otherArm] + CONSTANT_e * (self.alpha / self.nbArms) * sum_of_weights
+        self.weights[arm] = old_weights[arm] * np.exp(reward * (self.gamma / self.nbArms)) + CONSTANT_e * (self.alpha / self.nbArms) * sum_of_weights
+        # WARNING DONT Renormalize weights at each step !!
         # self.weights /= np.sum(self.weights)

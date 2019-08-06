@@ -105,6 +105,7 @@ class Evaluator(object):
         self.useJoblibForPolicies = useJoblibForPolicies  #: Use joblib to parallelize for loop on policies (useless)
         self.useJoblib = USE_JOBLIB and self.cfg['n_jobs'] != 1  #: Use joblib to parallelize for loop on repetitions (useful)
         self.cache_rewards = self.cfg.get('cache_rewards', False)  #: Should we cache and precompute rewards
+        self.environment_bayesian = self.cfg.get('environment_bayesian', False)  #: Is the environment Bayesian?
         self.showplot = self.cfg.get('showplot', True)  #: Show the plot (interactive display or not)
         self.use_box_plot = USE_BOX_PLOT or (self.repetitions == 1)  #: To use box plot (or violin plot if False). Force to use boxplot if repetitions=1.
 
@@ -293,7 +294,7 @@ class Evaluator(object):
         # 2. store main attributes and all other attributes, if they exist
         for name_of_attr in [
                 "horizon", "repetitions", "nbPolicies",
-                "delta_t_plot", "random_shuffle", "random_invert", "nb_break_points", "plot_lowerbound", "signature", "moreAccurate", "finalRanksOnAverage", "averageOn", "useJoblibForPolicies", "useJoblib", "cache_rewards", "showplot", "change_labels", "append_labels"
+                "delta_t_plot", "random_shuffle", "random_invert", "nb_break_points", "plot_lowerbound", "signature", "moreAccurate", "finalRanksOnAverage", "averageOn", "useJoblibForPolicies", "useJoblib", "cache_rewards", "environment_bayesian", "showplot", "change_labels", "append_labels"
             ]:
             if not hasattr(self, name_of_attr): continue
             value = getattr(self, name_of_attr)
@@ -301,6 +302,10 @@ class Evaluator(object):
             try: h5file.attrs[name_of_attr] = value
             except (ValueError, TypeError):
                 print("Error: when saving the Evaluator object to a HDF5 file, the attribute named {} (value {} of type {}) couldn't be saved. Skipping...".format(name_of_attr, value, type(value)))  # DEBUG
+
+        # 2.bis. store list of names of policies
+        labels = [ np.string_(policy.__cachedstr__) for policy in self.policies ]
+        h5file.attrs["labels"] = labels
 
         # 3. store some arrays that are shared between envs?
         for name_of_dataset in ["rewards", "rewardsSquared", "allRewards"]:
@@ -523,21 +528,27 @@ class Evaluator(object):
         """Print the final ranking of the different policies."""
         print("\nGiving the final ranks ...")
         assert 0 < self.averageOn < 1, "Error, the parameter averageOn of a EvaluatorMultiPlayers classs has to be in (0, 1) strictly, but is = {} here ...".format(self.averageOn)  # DEBUG
-        print("\nFinal ranking for this environment #{} :".format(envId))
+        print("\nFinal ranking for this environment #{} : (using {} accurate estimate of the regret)".format(envId, "more" if moreAccurate else "less"))
         nbPolicies = self.nbPolicies
-        lastY = np.zeros(nbPolicies)
+        lastRegret = np.zeros(nbPolicies)
+        totalRegret = np.zeros(nbPolicies)
+        totalRewards = np.zeros(nbPolicies)
+        totalWeightedSelections = np.zeros(nbPolicies)
         for i, policy in enumerate(self.policies):
             Y = self.getCumulatedRegret(i, envId, moreAccurate=moreAccurate)
             if self.finalRanksOnAverage:
-                lastY[i] = np.mean(Y[-int(self.averageOn * self.horizon)])   # get average value during the last 0.5% of the iterations
+                lastRegret[i] = np.mean(Y[-int(self.averageOn * self.horizon):])   # get average value during the last 0.5% of the iterations
             else:
-                lastY[i] = Y[-1]  # get the last value
-        # Sort lastY and give ranking
-        index_of_sorting = np.argsort(lastY)
+                lastRegret[i] = Y[-1]  # get the last value
+            totalRegret[i] = Y[-1]
+            totalRewards[i] = np.sum(self.getRewards(i, envId))
+            totalWeightedSelections[i] = np.sum( self.getAverageWeightedSelections(i, envId))
+        # Sort lastRegret and give ranking
+        index_of_sorting = np.argsort(lastRegret)
         for i, k in enumerate(index_of_sorting):
             policy = self.policies[k]
-            print("- Policy '{}'\twas ranked\t{} / {} for this simulation (last regret = {:.5g}).".format(policy.__cachedstr__, i + 1, nbPolicies, lastY[k]))
-        return lastY, index_of_sorting
+            print("- Policy '{}'\twas ranked\t{} / {} for this simulation\n\t(last regret = {:.5g},\ttotal regret = {:.5g},\ttotal reward = {:.5g},\ttotal weighted selection = {:.5g}).".format(policy.__cachedstr__, i + 1, nbPolicies, lastRegret[k], totalRegret[k], totalRewards[k], totalWeightedSelections[k]))
+        return lastRegret, index_of_sorting
         return fig
 
     def _xlabel(self, envId, *args, **kwargs):
@@ -719,7 +730,11 @@ class Evaluator(object):
             if self.repetitions <= 1:
                 print(u"    {} (mean of 1 run)" .format(_format_time(mean_time)))
             else:
-                print(u"    {} ± {} per loop (mean ± std. dev. of {} run)" .format(_format_time(mean_time), _format_time(var_time), self.repetitions))
+                print(u"    {} ± {} per loop (mean ± std. dev. of {} run)" .format(_format_time(mean_time, precision), _format_time(var_time, precision), self.repetitions))
+        for policyId, policy in enumerate(self.policies):
+            print("For policy #{} called '{}' ...".format(policyId, policy.__cachedstr__))
+            mean_time, var_time  = means[policyId], stds[policyId]
+            print(r"T^{%i}_{T=%i,K=%i} = " % (policyId + 1, self.horizon, self.envs[envId].nbArms) + r"{} pm {}".format(int(round(1000 * mean_time)), int(round(1000 * var_time))))  # XXX in milli seconds
         # table_to_latex(mean_data=means, std_data=stds, labels=[policy.__cachedstr__ for policy in self.policies], fmt_function=_format_time)
 
     def plotRunningTimes(self, envId=0, savefig=None, base=1, unit="seconds"):
@@ -749,11 +764,15 @@ class Evaluator(object):
         for policyId in np.argsort(means):
             policy = self.policies[policyId]
             print("\nFor policy #{} called '{}' ...".format(policyId, policy.__cachedstr__))
-            mean_time, var_time = means[policyId], stds[policyId]
+            mean_memory, var_memory = means[policyId], stds[policyId]
             if self.repetitions <= 1:
-                print(u"    {} (mean of 1 run)".format(sizeof_fmt(mean_time)))
+                print(u"    {} (mean of 1 run)".format(sizeof_fmt(mean_memory)))
             else:
-                print(u"    {} ± {} (mean ± std. dev. of {} runs)".format(sizeof_fmt(mean_time), sizeof_fmt(var_time), self.repetitions))
+                print(u"    {} ± {} (mean ± std. dev. of {} runs)".format(sizeof_fmt(mean_memory), sizeof_fmt(var_memory), self.repetitions))
+        for policyId, policy in enumerate(self.policies):
+            print("For policy #{} called '{}' ...".format(policyId, policy.__cachedstr__))
+            mean_memory, var_memory = means[policyId], stds[policyId]
+            print(r"M^{%i}_{T=%i,K=%i} = " % (policyId + 1, self.horizon, self.envs[envId].nbArms) + r"{} pm {}".format(int(round(mean_memory)), int(round(var_memory))))  # XXX in B
         # table_to_latex(mean_data=means, std_data=stds, labels=[policy.__cachedstr__ for policy in self.policies], fmt_function=sizeof_fmt)
 
     def plotMemoryConsumption(self, envId=0, savefig=None, base=1024, unit="KiB"):
@@ -821,7 +840,10 @@ class Evaluator(object):
             print("Median of last regrets R_T = {:.3g}".format(np.median(last_regrets)))
             print("Max of    last regrets R_T = {:.3g}".format(np.max(last_regrets)))
             print("Standard deviation     R_T = {:.3g}".format(np.std(last_regrets)))
-            print(r"{:.0f} \pm {:.0f}".format(np.mean(last_regrets), np.std(last_regrets)))
+        for policyId, policy in enumerate(self.policies):
+            print("For policy #{} called '{}' ...".format(policyId, policy.__cachedstr__))
+            last_regrets = self.getLastRegrets(policyId, envId=envId, moreAccurate=moreAccurate)
+            print(r"R^{%i}_{T=%i,K=%i} = " % (policyId + 1, self.horizon, self.envs[envId].nbArms) + r"{} pm {}".format(int(round(np.mean(last_regrets))), int(round(np.std(last_regrets)))))
         means = [np.mean(self.getLastRegrets(policyId, envId=envId, moreAccurate=moreAccurate)) for policyId in range(self.nbPolicies)]
         stds = [np.std(self.getLastRegrets(policyId, envId=envId, moreAccurate=moreAccurate)) for policyId in range(self.nbPolicies)]
         # table_to_latex(mean_data=means, std_data=stds, labels=[policy.__cachedstr__ for policy in self.policies])
@@ -871,7 +893,10 @@ class Evaluator(object):
                 plt.ylabel("Częstość zaobserowanej całkowitej straty", labelpad=15)
                 #plt.ylabel("{} obserwacji, ${}$ powtórzeń".format("Częstotliwość" if normed else "Liczba", self.repetitions))
                 last_regrets = self.getLastRegrets(policyId, envId=envId, moreAccurate=moreAccurate)
-                sns.distplot(last_regrets, hist=True, bins=nbbins, color=colors[policyId], kde_kws={'cut': 0, 'marker': markers[policyId], 'markevery': (policyId / 50., 0.1)})
+                try:
+                    sns.distplot(last_regrets, hist=True, bins=nbbins, color=colors[policyId], kde_kws={'cut': 0, 'marker': markers[policyId], 'markevery': (policyId / 50., 0.1)})
+                except np.linalg.linalg.LinAlgError:
+                    print("WARNING: a call to sns.distplot() failed because of a stupid numpy.linalg.linalg.LinAlgError exception... See https://api.travis-ci.org/v3/job/528931259/log.txt")  # WARNING
                 legend()
                 show_and_save(self.showplot, None if savefig is None else "{}__Algo_{}_{}".format(savefig, 1 + policyId, 1 + N), fig=fig, pickleit=USE_PICKLE)
                 figs.append(fig)
@@ -893,7 +918,10 @@ class Evaluator(object):
                 i, j = policyId % nrows, policyId // nrows
                 ax = axes[i, j] if ncols > 1 else axes[i]
                 last_regrets = self.getLastRegrets(policyId, envId=envId, moreAccurate=moreAccurate)
-                sns.distplot(last_regrets, ax=ax, hist=True, bins=nbbins, color=colors[policyId], kde_kws={'cut': 0, 'marker': markers[policyId], 'markevery': (policyId / 50., 0.1)})  # XXX
+                try:
+                    sns.distplot(last_regrets, ax=ax, hist=True, bins=nbbins, color=colors[policyId], kde_kws={'cut': 0, 'marker': markers[policyId], 'markevery': (policyId / 50., 0.1)})  # XXX
+                except np.linalg.linalg.LinAlgError:
+                    print("WARNING: a call to sns.distplot() failed because of a stupid numpy.linalg.linalg.LinAlgError exception... See https://api.travis-ci.org/v3/job/528931259/log.txt")  # WARNING
                 ax.set_title(policy.__cachedstr__, fontdict={'fontsize': 'xx-small'})  # XXX one of x-large, medium, small, None, xx-large, x-small, xx-small, smaller, larger, large
                 ax.tick_params(axis='both', labelsize=8)  # XXX https://stackoverflow.com/a/11386056/
         else:
@@ -910,7 +938,10 @@ class Evaluator(object):
                 labels.append(policy.__cachedstr__)
             if self.nbPolicies > 6: nbbins = int(nbbins * self.nbPolicies / 6)
             for policyId in range(self.nbPolicies):
-                sns.distplot(all_last_regrets[policyId], label=labels[policyId], hist=False, color=colors[policyId], kde_kws={'cut': 0, 'marker': markers[policyId], 'markevery': (policyId / 50., 0.1)})  #, bins=nbbins)  # XXX
+                try:
+                    sns.distplot(all_last_regrets[policyId], label=labels[policyId], hist=False, color=colors[policyId], kde_kws={'cut': 0, 'marker': markers[policyId], 'markevery': (policyId / 50., 0.1)})  #, bins=nbbins)  # XXX
+                except np.linalg.linalg.LinAlgError:
+                    print("WARNING: a call to sns.distplot() failed because of a stupid numpy.linalg.linalg.LinAlgError exception... See https://api.travis-ci.org/v3/job/528931259/log.txt")  # WARNING
             legend()
         # Common part
         show_and_save(self.showplot, savefig, fig=fig, pickleit=USE_PICKLE)
@@ -961,10 +992,10 @@ def delayed_play(env, policy, horizon,
         from types import MethodType
         old_detect_change = policy.detect_change
         def new_detect_change(self, *args, **kwargs):
-            did_it_detect_a_change = old_detect_change(*args, **kwargs)
-            if did_it_detect_a_change:
+            response_of_detect_change = old_detect_change(*args, **kwargs)
+            if (isinstance(response_of_detect_change, bool) and response_of_detect_change) or (isinstance(response_of_detect_change, tuple) and response_of_detect_change[0]):
                 result.number_of_cp_detections += 1
-            return did_it_detect_a_change
+            return response_of_detect_change
         policy.detect_change = MethodType(new_detect_change, policy)
 
     # XXX Experimental support for random events: shuffling or inverting the list of arms, at these time steps

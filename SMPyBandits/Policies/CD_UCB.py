@@ -102,11 +102,13 @@ class CD_IndexPolicy(BaseWrapperPolicy):
         return self.policy.choiceWithRank(rank=1)
 
     def getReward(self, arm, reward):
-        """ Give a reward: increase t, pulls, and update cumulated sum of rewards and update small history (sliding window) for that arm (normalized in [0, 1]).
+        r""" Give a reward: increase t, pulls, and update cumulated sum of rewards and update small history (sliding window) for that arm (normalized in [0, 1]).
 
         - Reset the whole empirical average if the change detection algorithm says so, with method :meth:`detect_change`, for this arm at this current time step.
 
         .. warning:: This is computationally costly, so an easy way to speed up this step is to use :attr:`lazy_detect_change_only_x_steps` :math:`= \mathrm{Step_t}` for a small value (e.g., 10), so not test for all :math:`t\in\mathbb{N}^*` but only :math:`s\in\mathbb{N}^*, s % \mathrm{Step_t} = 0` (e.g., one out of every 10 steps).
+
+        .. warning:: If the :math:`detect_change` method also returns an estimate of the position of the change-point, :math:`\hat{tau}`, then it is used to reset the memory of the changing arm and keep the observations from :math:`\hat{tau}+1`.
         """
         super(CD_IndexPolicy, self).getReward(arm, reward)
         # Get reward
@@ -117,7 +119,14 @@ class CD_IndexPolicy(BaseWrapperPolicy):
         self.all_rewards[arm].append(reward)
 
         should_you_try_to_detect = (self.last_pulls[arm] % self.lazy_detect_change_only_x_steps) == 0
-        if should_you_try_to_detect and self.detect_change(arm):
+        if not should_you_try_to_detect: return
+        has_detected_and_maybe_position = self.detect_change(arm)
+        if isinstance(has_detected_and_maybe_position, bool):
+            has_detected, position = has_detected_and_maybe_position, None
+        else:
+            has_detected, position = has_detected_and_maybe_position
+        if not has_detected: return
+        if position is None:
             # print("For a player {} a change was detected at time {} for arm {}, after {} pulls of that arm (giving mean reward = {:.3g}). Last restart on that arm was at tau = {}".format(self, self.t, arm, self.last_pulls[arm], np.sum(self.all_rewards[arm]) / self.last_pulls[arm], self.last_restart_times[arm]))  # DEBUG
 
             if not self._per_arm_restart:
@@ -130,6 +139,34 @@ class CD_IndexPolicy(BaseWrapperPolicy):
             self.last_restart_times[arm] = self.t
             self.last_pulls[arm] = 1
             self.all_rewards[arm] = [reward]
+
+            # Fully restart the algorithm ?!
+            if self._full_restart_when_refresh:
+                self.startGame(createNewPolicy=True)
+            # Or simply reset one of the empirical averages?
+            else:
+                if not self._per_arm_restart:
+                # or reset current memory for ALL THE arms
+                    for other_arm in range(self.nbArms):
+                        self.policy.rewards[other_arm] = 0
+                        self.policy.pulls[other_arm] = 0
+                # reset current memory for THIS arm
+                self.policy.rewards[arm] = np.sum(self.all_rewards[arm])
+                self.policy.pulls[arm] = len(self.all_rewards[arm])
+        # XXX second case, for policies implementing the localization trick
+        else:
+            # print("For a player {} a change was detected at time {} for arm {}, after {} pulls of that arm (giving mean reward = {:.3g}). Last restart on that arm was at tau = {}".format(self, self.t, arm, self.last_pulls[arm], np.sum(self.all_rewards[arm]) / self.last_pulls[arm], self.last_restart_times[arm]))  # DEBUG
+
+            if not self._per_arm_restart:
+                # or reset current memory for ALL THE arms
+                for other_arm in range(self.nbArms):
+                    self.last_restart_times[other_arm] = self.t
+                    self.last_pulls[other_arm] = 0
+                    self.all_rewards[other_arm] = []
+            # reset current memory for THIS arm
+            self.all_rewards[arm] = self.all_rewards[arm][position:] + [reward]
+            self.last_pulls[arm] = len(self.all_rewards[arm])
+            self.last_restart_times[arm] = self.t - len(self.all_rewards[arm]) + 1
 
             # Fully restart the algorithm ?!
             if self._full_restart_when_refresh:
@@ -178,8 +215,8 @@ class SlidingWindowRestart_IndexPolicy(CD_IndexPolicy):
             # And the small empirical average for that arm
             small_empirical_average = np.mean(self.last_rewards[arm])
             if np.abs(empirical_average - small_empirical_average) >= self.epsilon:
-                return True
-        return False
+                return True, None
+        return False, None
 
 
 # --- UCB-CDP based on LCB/UCB Mukherjee & Maillard's paper
@@ -199,12 +236,14 @@ class UCBLCB_IndexPolicy(CD_IndexPolicy):
     def __init__(self, nbArms,
             delta=None, delta0=1.0,
             lazy_try_value_s_only_x_steps=LAZY_TRY_VALUE_S_ONLY_X_STEPS,
+            use_localization=False,
             *args, **kwargs
         ):
         super(UCBLCB_IndexPolicy, self).__init__(nbArms, per_arm_restart=False, *args, **kwargs)
         # New parameters
         self.proba_random_exploration = 0  #: What they call :math:`\alpha` in their paper: the probability of uniform exploration at each time.
         self.lazy_try_value_s_only_x_steps = lazy_try_value_s_only_x_steps  #: Be lazy and try to detect changes for :math:`s` taking steps of size ``steps_s``.
+        self.use_localization = use_localization  #: experiment to use localization of the break-point, ie, restart memory of arm by keeping observations s+1...n instead of just the last one
         self._delta = delta
         self._delta0 = delta0
 
@@ -266,12 +305,12 @@ class UCBLCB_IndexPolicy(CD_IndexPolicy):
 
                 if ucb_after < lcb_before:
                     if verbose: print("  - For arm = {}, t0 = {}, s = {}, t = {}, the mean before mu(t0,s) = {:.3g} and the mean after mu(s+1,t) = {:.3g} and the S_before = {:.3g} and S_after = {:.3g}, so UCB_after = {:.3g} < LCB_before = {:.3g}...".format(armId, t0, s, t, mean_before, mean_after, S_before, S_after, ucb_after, lcb_before))
-                    return True
+                    return True, t0 + s if self.use_localization else None
 
                 ucb_before = mean_before + S_before
                 lcb_after  = mean_after  - S_after
 
                 if ucb_before < lcb_after:
                     if verbose: print("  - For arm = {}, t0 = {}, s = {}, t = {}, the mean before mu(t0,s) = {:.3g} and the mean after mu(s+1,t) = {:.3g} and the S_before = {:.3g} and S_after = {:.3g}, so UCB_before = {:.3g} < LCB_after = {:.3g}...".format(armId, t0, s, t, mean_before, mean_after, S_before, S_after, ucb_before, lcb_after))
-                    return True
-            return False
+                    return True, t0 + s if self.use_localization else None
+            return False, None

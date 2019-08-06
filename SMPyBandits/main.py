@@ -59,8 +59,7 @@ USE_PICKLE = False   #: Should we save the Evaluator object to a .pickle file at
 USE_HD5 = True   #: Should we save the data to a .hdf5 file at the end of the simulation?
 
 # Parameters for the plots (where to save them) and what to draw
-# os.path.dirname(__file__) requires Python >= 3.4
-PLOT_DIR = getenv('PLOT_DIR', os.path.dirname(__file__) + '/plots')  #: Directory for the plots
+PLOT_DIR = getenv('PLOT_DIR', 'plots')  #: Directory for the plots
 semilogx = False  #: Plot in semilogx by default?
 semilogy = False  #: Plot in semilogy by default?
 loglog   = False  #: Plot in loglog   by default?
@@ -156,7 +155,7 @@ if __name__ == '__main__':
 
         # Display the final regrets and rankings for that env
         evaluation.printLastRegrets(envId)
-        evaluation.printFinalRanking(envId)
+        evaluation.printFinalRanking(envId, moreAccurate=True)
         evaluation.printRunningTimes(envId)
         evaluation.printMemoryConsumption(envId)
         evaluation.printNumberOfCPDetections(envId)
@@ -171,17 +170,6 @@ if __name__ == '__main__':
         savefig = mainfig
         picklename = mainfig + '.pickle'
         h5pyname   = mainfig + '.hdf5'
-
-        if not do_plots:
-            if os.path.isdir(plot_dir):
-                print("{} is already a directory here...".format(plot_dir))
-            elif os.path.isfile(plot_dir):
-                raise ValueError("[ERROR] {} is a file, cannot use it as a directory !".format(plot_dir))
-            else:
-                mkdir(plot_dir)
-            if USE_HD5:
-                evaluation.saveondisk(h5pyname)
-            break
 
         if saveallfigs:
             # Create the sub folder
@@ -210,6 +198,9 @@ if __name__ == '__main__':
             # --- Save it to a HD5 file
             if USE_HD5:
                 evaluation.saveondisk(h5pyname)
+
+        if not do_plots:
+            continue  # XXX don't use break, it exit the loop on different environments
 
         # --- Also plotting the history of means
         if saveallfigs:
@@ -348,4 +339,4 @@ if __name__ == '__main__':
             print("\n\n==> To see the figures, do :\neog", os.path.join(plot_dir, "main*{}.png".format(hashvalue)))  # DEBUG
     # Done
     print("Done for simulations main.py ...")
-    #notify("Done for simulations main.py ...")
+    notify("Done for simulations main.py ...")
