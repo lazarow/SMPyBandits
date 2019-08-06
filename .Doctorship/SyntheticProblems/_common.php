@@ -5,6 +5,7 @@
  * [i] info
  * [_] debug
  */
+ini_set('memory_limit', '4096M');
 
 $options = getopt('c:e:', ['force','limit:']);
 
