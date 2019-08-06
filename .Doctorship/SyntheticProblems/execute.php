@@ -44,12 +44,14 @@ for ($i = 0; $i < count($queue); ++$i) {
     $smpybanditsOutput = utf8_encode(shell_exec(($isWin ? 'set NOPLOTS=True&& ' : 'NOPLOTS=True ') . 'python ' . $configuration['smpybandits.dir'] . '/main.py configuration_experiment'));
     file_put_contents($experimentDir . '/smpybandits_output.txt', $smpybanditsOutput);
     // Copying the HDF5 file (raw data)
-    $plotsDir = $configuration['smpybandits.dir'] . '/plots/SP__K' . count($experiment['arms']) . '_T' . $h . '_N' . $experiment['repetitions'] . '__1_algos';
+    $plotsDir = __DIR__ . '/plots/SP__K' . count($experiment['arms']) . '_T' . $h . '_N' . $experiment['repetitions'] . '__1_algos';
     foreach (glob($plotsDir . '/*.hdf5') as $filename) {
         shell_exec($configuration['h5tojson'] . ' "' . $filename . '" > "' . $experimentDir . '/raw_data.json"');
     }
     // Removing SMPyBandits plots folder
-    deleteDir($plotsDir);
+    if (file_exists($plotsDir)) {
+        deleteDir($plotsDir);
+    }
     // Retrieving the summary of the experiment
     $regretPattern = "/\s+For policy #([0-9]+) called '(.*?)' \.\.\.\s+Last regrets \(for all repetitions\) have:\sMin of\s+last regrets R_T = ([0-9.\-e\+]+)\sMean of\s+last regrets R_T = ([0-9.\-e\+]+)\sMedian of last regrets\s+R_T = ([0-9.\-e\+]+)\sMax of\s+last regrets R_T = ([0-9.\-e\+]+)\sStandard deviation\s+R_T = ([0-9.\-e\+]+)/mi";
     $regretMatches = [];
