@@ -24,14 +24,14 @@ return [
         array_merge([0.5], array_fill(0, 5, 0.45), array_fill(0, 14, 0.43), array_fill(0, 10, 0.38)),
     ],
     'policies' => [
-        /**
-         * Syntax:
-         * ['archtype' => '{a class name}', 'params' => [ ... ]]
-         * The parameters are very direct generating method:
-         * ['z'=>'1.97'] produces {"z": 1.97}
-         * ['z'=>'test'] produces {"z": test}
-         * ['z'=>'str:test'] produces {"z": "test"}
-         */
-        ['archtype' => 'TSPolP', 'params' => []],
+        ['archtype' => 'EpsilonGreedy', 'params' => ['epsilon' => '0.1']],
+        ['archtype' => 'EpsilonGreedy', 'params' => ['epsilon' => '0.2']],
+        ['archtype' => 'EpsilonGreedy', 'params' => ['epsilon' => '0.3']],
+        ['archtype' => 'EpsilonGreedy', 'params' => ['epsilon' => '0.4']],
+        ['archtype' => 'EpsilonGreedy', 'params' => ['epsilon' => '0.5']],
+        ['archtype' => 'EpsilonGreedy', 'params' => ['epsilon' => '0.6']],
+        ['archtype' => 'EpsilonGreedy', 'params' => ['epsilon' => '0.7']],
+        ['archtype' => 'EpsilonGreedy', 'params' => ['epsilon' => '0.8']],
+        ['archtype' => 'EpsilonGreedy', 'params' => ['epsilon' => '0.9']]
     ]
 ];

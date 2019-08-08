@@ -8,6 +8,7 @@ if (file_exists($configuration['queue.filepath']) === false) {
 
 $isWin = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
 $queue = json_decode(file_get_contents($configuration['queue.filepath']), true);
+echo '[i] The total number of experiments: ' . count($queue) . PHP_EOL;
 for ($i = 0; $i < count($queue); ++$i) {
     $experiment = $queue[$i];
     $experimentDir = $configuration['output.dir'] . '/experiments/' . $experiment['md5'];

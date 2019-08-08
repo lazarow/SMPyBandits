@@ -22,6 +22,7 @@ foreach ($experiment['policies'] as $idx => $policy) {
     ];
     $policies[$idx] = '';
 }
+$allLatexTables = '';
 foreach ($experiment['arms'] as $arms) {
     $k = count($arms);
     $experimentMd5 = substr(md5(json_encode($arms)), -7, 7);
@@ -58,11 +59,11 @@ foreach ($experiment['arms'] as $arms) {
     $limit = isset($options['limit']) ? (int) $options['limit'] : 999;
     $latexTable = '\\begin{table}[!ht]
 \\begin{minipage}{\\textwidth}\\begin{center}
-\\caption{Uśrednione po ' . $repetitions . ' powtórzeniach wyniki eksperymentu posortowane wg. całkowitej straty dla problemu $ \mathcal{A} {=} \{ $ ';
+\\caption{Uśrednione po ' . $repetitions . ' powtórzeniach wyniki eksperymentu posortowane wg. całkowitej straty dla problemu: ';
     for ($i = 0; $i < count($arms); ++$i) {
         $latexTable .= ($i === 0 ? '' : ', ') . '$\\Bernoulli{' . strtr($arms[$i], ['.' => '{,}']) . '}$';
     }
-    $latexTable .= ' $ \} $ z liczbą ramion $K{=}' . count($arms) . '$ oraz skończoną liczbą iteracji $ H {=} ' . $h . '$.}
+    $latexTable .= ' z liczbą ramion $K{=}' . count($arms) . '$ oraz skończoną liczbą iteracji $ H {=} ' . $h . '$.}
 \\label{table:' . $experimentMd5 . '}
 \\rowcolors{4}{white}{lightgray1}
 \\begin{tabular}{cp{155pt}rrrrrr}
@@ -106,6 +107,7 @@ foreach ($experiment['arms'] as $arms) {
 \\end{center}\\end{minipage}
 \\end{table}';
     file_put_contents($standingsDir . '/table_' . $experimentMd5 . '.tex', $latexTable);
+    $allLatexTables .=  $latexTable;
     # </editor-fold>
     # <editor-fold defaultstate="collapsed" desc="Gather The Summative Standings">
     foreach (['regret', 'time', 'memory'] as $metrics) {
@@ -163,7 +165,17 @@ miejsc w rankingach dla założonych w eksperymencie równoważnych problemów z
 \\end{center}\\end{minipage}
 \\end{table}';
     file_put_contents($standingsDir . '/table_' . $metrics . '.tex', $latexTable);
+    $allLatexTables .= $latexTable;
 }
 # </editor-fold>
+$template = file_get_contents($configuration['tables.template.filepath']);
+file_put_contents($standingsDir . '/all_tables.tex', strtr($template, ['{{tables}}' => $allLatexTables]));
+shell_exec('pdflatex -interaction=nonstopmode -shell-escape ' . realpath($standingsDir . '/all_tables.tex'));
+foreach (glob('all_tables*') as $filename) {
+    if (strpos($filename, '.pdf') !== false) {
+        copy($filename, $standingsDir . '/all_tables.pdf');
+    }
+    unlink($filename);
+}
 file_put_contents($standingsDir . '/standings.end', 'done');
 echo '[i] The standings have been generated in the path: ' . realpath($standingsDir) . PHP_EOL;

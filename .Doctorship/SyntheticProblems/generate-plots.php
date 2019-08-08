@@ -37,9 +37,10 @@ foreach ($experiment['arms'] as $arms) {
     legend entries = {' . array_reduce($policies, function ($carry, $name) {
         return $carry . strtr($name, ['='=>'{=}']) . '\\\\';
     }, '') . '},
+    label style={font=\footnotesize},
     xlabel={Krok czasowy $t$},
     xticklabel style={/pgf/number format/1000 sep=},
-    ylabel={Całkowita uzyskana strata $ R_t{=}t $},
+    ylabel={Całkowita uzyskana strata $ R{=} \sum_{t=1}^{H} \left( \max\limits_{i=1,\ldots, K} \mathbb{E} \lbrack x_{i,t} \rbrack \right) - \sum_{t=1}^{H} \mathbb{E} \lbrack x_{S_t,t} \rbrack $},
     xmin=0, xmax=' . $h . ',
     ymin=0, ymax=' . max(array_map(function ($data) { return max($data['/env_0/cumulatedRegret']); }, $results)) . ',
     legend pos=north west,
