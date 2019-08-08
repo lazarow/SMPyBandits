@@ -9,4 +9,7 @@ configuration_doctorship.py
 !/output/plots/
 /output/plots/*
 !/output/plots/.gitkeep
+!/output/results/
+/output/results/*
+!/output/results/.gitkeep
 /plots/
