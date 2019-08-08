@@ -18,7 +18,7 @@ foreach ($experiment['arms'] as $arms) {
     }, 0));
     $results = $policies = [];
     foreach ($experiment['policies'] as $idx => $policy) {
-        $experimentDir = $configuration['output.dir'] . '/' . md5(json_encode($policy) . json_encode($arms) . $experiment['repetitions']);
+        $experimentDir = $configuration['output.dir'] . '/experiments/' . md5(json_encode($policy) . json_encode($arms) . $experiment['repetitions']);
         if (file_exists($experimentDir . '/raw_data.json') === false) {
             exit('[!] The experiment does not have raw data for policy: ' . $policy['archtype'] . ' and arms: ' . implode('; ', $arms) . '.' . PHP_EOL);
         }

@@ -32,7 +32,7 @@ foreach ($experiment['arms'] as $arms) {
     $results = [];
     foreach ($experiment['policies'] as $idx => $policy) {
         $md5 = md5(json_encode($policy) . json_encode($arms) . $experiment['repetitions']);
-        $experimentDir = $configuration['output.dir'] . '/' . $md5;
+        $experimentDir = $configuration['output.dir'] . '/experiments/' . $md5;
         if (file_exists($experimentDir . '/results.json') === false) {
             exit('[!] The experiment does not have results for policy: ' . $policy['archtype'] . ' and arms: ' . implode('; ', $arms) . '.' . PHP_EOL);
         }

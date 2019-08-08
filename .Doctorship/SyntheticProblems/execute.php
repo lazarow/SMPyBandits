@@ -10,7 +10,7 @@ $isWin = strtoupper(substr(PHP_OS, 0, 3)) === 'WIN';
 $queue = json_decode(file_get_contents($configuration['queue.filepath']), true);
 for ($i = 0; $i < count($queue); ++$i) {
     $experiment = $queue[$i];
-    $experimentDir = $configuration['output.dir'] . '/' . $experiment['md5'];
+    $experimentDir = $configuration['output.dir'] . '/experiments/' . $experiment['md5'];
     if (array_key_exists('force', $options) === false && file_exists($experimentDir) && file_exists($experimentDir . '/experiment.end')) {
         echo '[_] The findings of the experiments no. ' . $i . ' already exists' . PHP_EOL;
         continue;
