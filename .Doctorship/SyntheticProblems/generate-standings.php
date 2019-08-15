@@ -117,16 +117,17 @@ foreach ($experiment['arms'] as $arms) {
 \\hline
 \\endfoot
 
-\hline
-\arrayrulecolor{white}\hline
-\arrayrulecolor{white}\hline
-\arrayrulecolor{white}\hline
-\arrayrulecolor{white}\hline
-\arrayrulecolor{white}\hline
-\arrayrulecolor{white}\hline
-\arrayrulecolor{white}\hline
-\arrayrulecolor{white}\hline
-\arrayrulecolor{white}\hline
+\\hline
+\\arrayrulecolor{white}\\hline
+\\arrayrulecolor{white}\\hline
+\\arrayrulecolor{white}\\hline
+\\arrayrulecolor{white}\\hline
+\\arrayrulecolor{white}\\hline
+\\arrayrulecolor{white}\\hline
+\\arrayrulecolor{white}\\hline
+\\arrayrulecolor{white}\\hline
+\\arrayrulecolor{white}\\hline
+\\arrayrulecolor{black}
 \\rowcolor{white}
 \\multicolumn{8}{l}{\footnotesize $^\star$ Średnia całkowita uzyskana strata, liczoną wg. następującego wzoru: $ R{=} \sum_{t=1}^{H} ( \max\limits_{i=1,\ldots, K} \mathbb{E} \lbrack x_{i,t} \rbrack ) - \sum_{t=1}^{H} \mathbb{E} \lbrack x_{S_t,t} \rbrack $.} \\\\
 \\rowcolor{white}
@@ -138,7 +139,7 @@ foreach ($experiment['arms'] as $arms) {
         $idx = $standings['regret'][$i];
         $result = $results[$standings['regret'][$i]];
         $limit--;
-        $latexTable .= '\rowcolor{' . ($i % 2 == 0 ? 'lightgray2' : 'white') . '}
+        $latexTable .= ($i % 2 == 0 ? '' : '\rowcolor{lightgray2}') . '
 ';
         $latexTable .= '\footnotesize $' . ($i + 1) . '$ & \footnotesize ' . strtr($result['policy']['name'], ['=' => '{=}'])
             . ' & \footnotesize ' . ($standings['regret'][0] === $idx ? '\boldmath' : '') . '$' . number_format($result['regret']['mean'], 2, '{,}', '') . '$'
@@ -188,7 +189,7 @@ foreach ($experiment['arms'] as $arms) {
         $idx = $standings['regret'][$i];
         $result = $results[$standings['regret'][$i]];
         $limit--;
-        $latexTable .= '\rowcolor{' . ($i % 2 == 0 ? 'lightgray2' : 'white') . '}
+        $latexTable .= ($i % 2 == 0 ? '' : '\rowcolor{lightgray2}') . '
 ';
         $latexTable .= '\footnotesize $' . ($i + 1) . '$ & \footnotesize ' . strtr($result['policy']['name'], ['=' => '{=}'])
             . ' & \footnotesize ' . ($standings['regret'][0] === $idx ? '\boldmath' : '') . '$' . number_format($result['regret']['mean'], 2, '{,}', '') . '$'
@@ -200,16 +201,17 @@ foreach ($experiment['arms'] as $arms) {
             . '\\\\
 ';
     }
-    $latexTable .= '\hline
-\arrayrulecolor{white}\hline
-\arrayrulecolor{white}\hline
-\arrayrulecolor{white}\hline
-\arrayrulecolor{white}\hline
-\arrayrulecolor{white}\hline
-\arrayrulecolor{white}\hline
-\arrayrulecolor{white}\hline
-\arrayrulecolor{white}\hline
-\arrayrulecolor{white}\hline
+    $latexTable .= '\\hline
+\\arrayrulecolor{white}\\hline
+\\arrayrulecolor{white}\\hline
+\\arrayrulecolor{white}\\hline
+\\arrayrulecolor{white}\\hline
+\\arrayrulecolor{white}\\hline
+\\arrayrulecolor{white}\\hline
+\\arrayrulecolor{white}\\hline
+\\arrayrulecolor{white}\\hline
+\\arrayrulecolor{white}\\hline
+\\arrayrulecolor{black}
 \\rowcolor{white}
 \\multicolumn{8}{l}{\footnotesize $^\star$ Średnia całkowita uzyskana strata, liczoną wg. następującego wzoru: $ R{=} \sum_{t=1}^{H} ( \max\limits_{i=1,\ldots, K} \mathbb{E} \lbrack x_{i,t} \rbrack ) - \sum_{t=1}^{H} \mathbb{E} \lbrack x_{S_t,t} \rbrack $.} \\\\
 \\rowcolor{white}
@@ -293,6 +295,7 @@ $latexTable .= '& \\multicolumn{1}{m{14mm}<{\centering}|}{\footnotesize $A^{WSM}
 \arrayrulecolor{white}\hline
 \arrayrulecolor{white}\hline
 \arrayrulecolor{white}\hline
+\\arrayrulecolor{black}
 \\multicolumn{' . ($nofProblems + 3) . '}{l}{\footnotesize $^\\star$ Numer problemu, dane w tabeli oznaczają miejsce w rankingu.} \\\\
 \\multicolumn{' . ($nofProblems + 3) . '}{l}{\\footnotesize $^{\\star\\star}$ $A^{WSM}{=}\sum\nolimits_{j=1}^{' . $nofProblems . '} (1{/}' . $nofProblems . ') (1 - (a_{ij} {-} 1) {/} ' . ($nofPolicies - 1) . ')$ gdzie $ a_{ij} $ to miejsce zajęte przez $ i $-tą strategię w $ j $-tym problemie.} \\\\
 \\endlastfoot
@@ -300,7 +303,7 @@ $latexTable .= '& \\multicolumn{1}{m{14mm}<{\centering}|}{\footnotesize $A^{WSM}
 ';
 $place = 1;
 foreach ($summativeStandings as $policyIdx => $results) {
-    $latexTable .= '\rowcolor{' . ($place % 2 == 0 ? 'white' : 'lightgray2') . '}
+    $latexTable .= ($place % 2 == 1 ? '' : '\rowcolor{lightgray2}') . '
 ';
     $latexTable .= '\footnotesize $' . $place++ . '$ & \footnotesize ' . strtr($policies[$policyIdx], ['=' => '{=}']) . ' & \footnotesize ' . implode(' & \footnotesize ', $results[$metrics]) . ' \\\\
 ';
@@ -334,7 +337,7 @@ $latexTable .= '& \\multicolumn{1}{m{14mm}<{\centering}|}{\footnotesize $A^{WSM}
 ';
 $place = 1;
 foreach ($summativeStandings as $policyIdx => $results) {
-    $latexTable .= '\rowcolor{' . ($place % 2 == 0 ? 'white' : 'lightgray2') . '}
+    $latexTable .= ($place % 2 == 1 ? '' : '\rowcolor{lightgray2}') . '
 ';
     $latexTable .= '\footnotesize $' . $place++ . '$ & \footnotesize ' . strtr($policies[$policyIdx], ['=' => '{=}']) . ' & \footnotesize ' . implode(' & \footnotesize ', $results[$metrics]) . ' \\\\
 ';
@@ -353,6 +356,7 @@ foreach ($summativeStandings as $policyIdx => $results) {
 \arrayrulecolor{white}\hline
 \arrayrulecolor{white}\hline
 \arrayrulecolor{white}\hline
+\\arrayrulecolor{black}
 \\multicolumn{' . ($nofProblems + 3) . '}{l}{\footnotesize $^\\star$ Numer problemu, dane w tabeli oznaczają miejsce w rankingu.} \\\\
 \\multicolumn{' . ($nofProblems + 3) . '}{l}{\\footnotesize $^{\\star\\star}$ $A^{WSM}{=}\sum\nolimits_{j=1}^{' . $nofProblems . '} (1{/}' . $nofProblems . ') (1 - (a_{ij} {-} 1) {/} ' . ($nofPolicies - 1) . ')$ gdzie $ a_{ij} $ to miejsce zajęte przez $ i $-tą strategię w $ j $-tym problemie.} \\\\
 \\end{tabular}\\end{table}\end{center}';
