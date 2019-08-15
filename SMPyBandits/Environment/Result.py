@@ -7,6 +7,7 @@ __version__ = "0.9"
 
 import numpy as np
 
+from pprint import pprint
 
 class Result(object):
     """ Result accumulators."""
@@ -14,11 +15,15 @@ class Result(object):
     # , delta_t_save=1):
     def __init__(self, nbArms, horizon, indexes_bestarm=-1, means=None):
         """ Create ResultMultiPlayers."""
-        # self._means = means  # Keep the means for ChangingAtEachRepMAB cases
+        self._means = means  # Keep the means for ChangingAtEachRepMAB cases
+        # pprint(self._means)
         # self.delta_t_save = delta_t_save  #: Sample rate for saving.
         self.choices = np.zeros(horizon, dtype=int)  #: Store all the choices.
         self.rewards = np.zeros(horizon)  #: Store all the rewards, to compute the mean.
         self.pulls = np.zeros(nbArms, dtype=int)  #: Store the pulls.
+        self.regret = 0
+        self.regret2 = 0
+        self.culmulativeRegret = np.zeros(horizon) 
         if means is not None:
             indexes_bestarm = np.nonzero(np.isclose(means, np.max(means)))[0]
         indexes_bestarm = np.asarray(indexes_bestarm)
@@ -34,6 +39,9 @@ class Result(object):
         self.choices[time] = choice
         self.rewards[time] = reward
         self.pulls[choice] += 1
+        self.regret += self._means[0] - self._means[choice]
+        self.regret2 += self._means[0] - reward
+        self.culmulativeRegret[time] = self.regret + self._means[0] - self._means[choice]
 
     def change_in_arms(self, time, indexes_bestarm):
         """ Store the position of the best arm from this list of arm.

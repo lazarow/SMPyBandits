@@ -13,10 +13,10 @@ foreach ($experiment['arms'] as $arms) {
     $nofPolicies = count($experiment['policies']);
     $md5 = substr(md5(json_encode($arms)), -7, 7);
     $bestArm = $arms[0];
-    $h = count($arms) < 3 ? 200 : 3 * ceil(array_reduce(array_slice($arms, 1), function ($carry, $arm) use ($bestArm) {
+    $h = count($arms) < 3 ? 200 : ceil(5 * array_reduce(array_slice($arms, 1), function ($carry, $arm) use ($bestArm) {
         return $carry + 1 / pow($bestArm - $arm, 2);
     }, 0));
-    $results = $policies = [];
+    $results = $policies = $points = [];
     foreach ($experiment['policies'] as $idx => $policy) {
         $experimentDir = $configuration['output.dir'] . '/experiments/' . md5(json_encode($policy) . json_encode($arms) . $experiment['repetitions']);
         if (file_exists($experimentDir . '/raw_data.json') === false) {
@@ -27,9 +27,16 @@ foreach ($experiment['arms'] as $arms) {
             $results[$idx][$dataset['alias'][0]] = $dataset['value'][0];
         }
         $policies[$idx] = json_decode(file_get_contents($experimentDir . '/results.json'), true)['policy']['name'];
+        $points[$idx] = array_fill(0, $h, 0);
+        for ($i = 0; $i < $h; ++$i) {
+            for ($j = 0; $j < $experiment['repetitions']; ++$j) {
+                $points[$idx][$i] += $results[$idx]['/env_0/culmulativeRegrets'][$j][$i];
+            }
+            $points[$idx][$i] /= $experiment['repetitions'];
+        }
     }
     # <editor-fold defaultstate="collapsed" desc="Regret Plot">
-    $nofDataPoints = count($results[0]['/env_0/cumulatedRegret']);
+    $nofDataPoints = $h;
     $plots['regret' . $md5] = '\\begin{tikzpicture}
 \\begin{axis}[
     width=16.5cm,
@@ -40,7 +47,7 @@ foreach ($experiment['arms'] as $arms) {
     label style={font=\footnotesize},
     xlabel={Krok czasowy $t$},
     xticklabel style={/pgf/number format/1000 sep=},
-    ylabel={Całkowita uzyskana strata $ R{=} \sum_{t=1}^{H} \left( \max\limits_{i=1,\ldots, K} \mathbb{E} \lbrack x_{i,t} \rbrack \right) - \sum_{t=1}^{H} \mathbb{E} \lbrack x_{S_t,t} \rbrack $},
+    ylabel={Całkowita uzyskana strata $ R{=} \sum_{t=1}^{H} ( \max\limits_{i=1,\ldots, K} \mathbb{E} \lbrack x_{i,t} \rbrack ) - \sum_{t=1}^{H} \mathbb{E} \lbrack x_{S_t,t} \rbrack $},
     xmin=0, xmax=' . $h . ',
     ymin=0, ymax=' . max(array_map(function ($data) { return max($data['/env_0/cumulatedRegret']); }, $results)) . ',
     legend pos=north west,
@@ -57,7 +64,7 @@ foreach ($experiment['arms'] as $arms) {
     ' . implode('', array_map(function ($value) {
         global $t;
         return '(' . $t++ .',' . $value . ')';
-    }, $data['/env_0/cumulatedRegret'])) . '
+    }, $points[$policyIdx])) . '
 };
 ';
     }

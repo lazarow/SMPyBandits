@@ -22,7 +22,7 @@ for ($i = 0; $i < count($queue); ++$i) {
     echo '[i] The experiment no. ' . $i . ' has been started' . PHP_EOL;
     // Calculating H-value
     $bestArm = $experiment['arms'][0];
-    $h = count($experiment['arms']) < 3 ? 200 : 3 * ceil(array_reduce(array_slice($experiment['arms'], 1), function ($carry, $arm) use ($bestArm) {
+    $h = count($experiment['arms']) < 3 ? 200 : ceil(5 * array_reduce(array_slice($experiment['arms'], 1), function ($carry, $arm) use ($bestArm) {
         return $carry + 1 / pow($bestArm - $arm, 2);
     }, 0));
     $experiment['h'] = $h;

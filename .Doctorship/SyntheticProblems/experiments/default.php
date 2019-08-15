@@ -32,6 +32,7 @@ return [
          * ['z'=>'test'] produces {"z": test}
          * ['z'=>'str:test'] produces {"z": "test"}
          */
-        ['archtype' => 'TSPolP', 'params' => []],
+        ['archtype' => 'TSPolP', 'params' => ['alpha' => 0.1, 'z' => 2.33]],
+        ['archtype' => 'UCB', 'params' => []],
     ]
 ];

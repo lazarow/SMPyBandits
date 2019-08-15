@@ -19,6 +19,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+from pprint import pprint
+
 import inspect
 def _nbOfArgs(function):
     try:
@@ -144,6 +146,9 @@ class Evaluator(object):
         if self.moreAccurate: self.allPulls = dict()  #: For each env, keep cumulative counts of all arm pulls
         self.lastPulls = dict()  #: For each env, keep cumulative counts of all arm pulls
         self.runningTimes = dict()  #: For each env, keep the history of running times
+        self.regrets = dict()
+        self.regrets2 = dict()
+        self.culmulativeRegrets = dict()
         self.memoryConsumption = dict()  #: For each env, keep the history of running times
         self.numberOfCPDetections = dict()  #: For each env, store the number of change-point detections by each algorithms, to print it's average at the end (to check if a certain Change-Point detector algorithm detects too few or too many changes).
         # XXX: WARNING no memorized vectors should have dimension duration * repetitions, that explodes the RAM consumption!
@@ -153,6 +158,9 @@ class Evaluator(object):
             if self.moreAccurate: self.allPulls[envId] = np.zeros((self.nbPolicies, self.envs[envId].nbArms, self.horizon), dtype=np.int32)
             self.lastPulls[envId] = np.zeros((self.nbPolicies, self.envs[envId].nbArms, self.repetitions), dtype=np.int32)
             self.runningTimes[envId] = np.zeros((self.nbPolicies, self.repetitions))
+            self.regrets[envId] = np.zeros((self.nbPolicies, self.repetitions))
+            self.regrets2[envId] = np.zeros((self.nbPolicies, self.repetitions))
+            self.culmulativeRegrets[envId] = np.zeros((self.nbPolicies, self.repetitions, self.horizon))
             self.memoryConsumption[envId] = np.zeros((self.nbPolicies, self.repetitions))
             self.numberOfCPDetections[envId] = np.zeros((self.nbPolicies, self.repetitions), dtype=np.int32)
         print("Number of environments to try:", len(self.envs))
@@ -243,6 +251,7 @@ class Evaluator(object):
             allrewards = None
 
         def store(r, policyId, repeatId):
+            # pprint(r.regret)
             """ Store the result of the #repeatId experiment, for the #policyId policy."""
             self.rewards[policyId, envId, :] += r.rewards
             self.lastCumRewards[policyId, envId, repeatId] = np.sum(r.rewards)
@@ -260,6 +269,9 @@ class Evaluator(object):
             self.memoryConsumption[envId][policyId, repeatId] = r.memory_consumption
             self.lastPulls[envId][policyId, :, repeatId] = r.pulls
             self.runningTimes[envId][policyId, repeatId] = r.running_time
+            self.regrets[envId][policyId, repeatId] = r.regret
+            self.regrets2[envId][policyId, repeatId] = r.regret2
+            self.culmulativeRegrets[envId][policyId, repeatId] = r.culmulativeRegret
             self.numberOfCPDetections[envId][policyId, repeatId] = r.number_of_cp_detections
 
         # Start for all policies
@@ -326,7 +338,7 @@ class Evaluator(object):
                 except (ValueError, TypeError):
                     print("Error: when saving the Evaluator object to a HDF5 file, the attribute named {} (value {} of type {}) couldn't be saved. Skipping...".format(name_of_attr, value, type(value)))  # DEBUG
             # 4.c. store data for that env
-            for name_of_dataset in ["allPulls", "lastPulls", "runningTimes", "memoryConsumption", "numberOfCPDetections"]:
+            for name_of_dataset in ["allPulls", "lastPulls", "runningTimes", "memoryConsumption", "numberOfCPDetections", "regrets", "regrets2", "culmulativeRegrets"]:
                 if not ( hasattr(self, name_of_dataset) and envId in getattr(self, name_of_dataset) ): continue
                 data = getattr(self, name_of_dataset)[envId]
                 try: sbgrp.create_dataset(name_of_dataset, data=data)
@@ -500,6 +512,9 @@ class Evaluator(object):
         means = [ np.mean(times) for times in all_times ]
         stds  = [ np.std(times) for times in all_times ]
         return means, stds, all_times
+
+    def getRegrets(self, envId=0):
+        return self.regrets[envId]
 
     def getMemoryConsumption(self, envId=0):
         """Get the means and stds and list of memory consumptions of the different policies."""

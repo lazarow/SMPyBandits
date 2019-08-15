@@ -25,7 +25,7 @@ except ImportError:
     from SMPyBandits.Policies.Experimentals import *
 
 HORIZON = 10
-REPETITIONS = 5
+REPETITIONS = 1
 DO_PARALLEL = True
 N_JOBS = 8
 

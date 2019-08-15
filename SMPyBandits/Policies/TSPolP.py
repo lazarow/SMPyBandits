@@ -3,9 +3,10 @@ import math
 
 # with binomial interval
 class TSPolP(object):
-    def __init__(self, nbArms, alpha=0.01, z=1.96, *args, **kwargs):
+    def __init__(self, nbArms, alpha=0.01, beta=1, z=1.96, *args, **kwargs):
         self.nbArms = nbArms
         self.alpha = alpha
+        self.beta = beta
         self.z = z
         self.scoreboard = [[1 for i in range(nbArms)] for j in range(nbArms)]
         self.rewards = [0 for i in range(nbArms)]
@@ -15,7 +16,7 @@ class TSPolP(object):
         random.seed()
 
     def __str__(self):
-        return "TSPol+($\\alpha=" + str(self.alpha) + "$, $z=" + str(self.z) + "$)"
+        return "TSW($\\alpha=" + str(self.alpha) + "$, $\\beta=" + str(self.beta) + "$, $z=" + str(self.z) + "$)"
 
     def startGame(self):
         pass
@@ -79,8 +80,8 @@ class TSPolP(object):
 
     def duelFunction(self, a, b):
         n = self.pulls[a] + self.pulls[b]
-        va = self.rewards[a] / self.pulls[a] + math.sqrt(2 * math.log(n) / self.pulls[a]) + 0.00000001 * random.random()
-        vb = self.rewards[b] / self.pulls[b] + math.sqrt(2 * math.log(n) / self.pulls[b]) + 0.00000001 * random.random()
+        va = self.rewards[a] / self.pulls[a] + math.sqrt(self.beta * math.log(n) / self.pulls[a]) + 0.00000001 * random.random()
+        vb = self.rewards[b] / self.pulls[b] + math.sqrt(self.beta * math.log(n) / self.pulls[b]) + 0.00000001 * random.random()
         return 1 if va >= vb else 0
 
     def handleCollision(self, arm):

@@ -10,10 +10,17 @@
 \usepackage{caption}
 \usepackage{multirow}
 \usepackage[table]{xcolor}
-\usepackage{tabularx} 
+\usepackage{tabularx}
+\usepackage{booktabs}
+\usepackage{amsfonts}
+\usepackage{hhline}
 
 \definecolor{lightgray1}{HTML}{FAFAF8}
 \definecolor{lightgray2}{HTML}{E6E6E5}
+
+\setlength{\tabcolsep}{1mm}
+
+\geometry{bindingoffset=0.5cm}
 
 \newcommand{\floatfootnote}[1]{\ifx\[$\else\footnote{#1}\fi}
 \newcommand{\Bernoulli}[1]{\operatorname{Bern}\left(#1\right)}

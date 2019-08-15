@@ -18,7 +18,8 @@ foreach ($experiment['policies'] as $idx => $policy) {
     $summativeStandings[$idx] = [
         'regret' => [],
         'time' => [],
-        'memory' => []
+        'memory' => [],
+        'bestArmPulls' => []
     ];
     $policies[$idx] = '';
 }
@@ -27,7 +28,7 @@ foreach ($experiment['arms'] as $arms) {
     $k = count($arms);
     $experimentMd5 = substr(md5(json_encode($arms)), -7, 7);
     $bestArm = $arms[0];
-    $h = count($arms) < 3 ? 200 : 3 * ceil(array_reduce(array_slice($arms, 1), function ($carry, $arm) use ($bestArm) {
+    $h = count($arms) < 3 ? 200 : ceil(5 * array_reduce(array_slice($arms, 1), function ($carry, $arm) use ($bestArm) {
         return $carry + 1 / pow($bestArm - $arm, 2);
     }, 0));
     $results = [];
@@ -39,11 +40,20 @@ foreach ($experiment['arms'] as $arms) {
         }
         $results[$idx] = json_decode(file_get_contents($experimentDir . '/results.json'), true);
         $policies[$idx] = $results[$idx]['policy']['name'];
+        if (
+            isset($results[$idx]['regret']) === false
+            || isset($results[$idx]['time']) === false
+            || isset($results[$idx]['memory']) === false
+            || isset($results[$idx]['bestArmPulls']) === false
+        ) {
+            echo '[!] The data for experiment: ' . $md5 . ' are incomplete.' . PHP_EOL;
+        }
     }
     $standings = [
         'regret' => array_keys($results),
         'time' => array_keys($results),
-        'memory' => array_keys($results)
+        'memory' => array_keys($results),
+        'bestArmPulls' => array_keys($results)
     ];
     usort($standings['regret'], function ($idx1, $idx2) use ($results) {
         return cmp($results[$idx1]['regret']['mean'], $results[$idx2]['regret']['mean']);
@@ -54,63 +64,165 @@ foreach ($experiment['arms'] as $arms) {
     usort($standings['memory'], function ($idx1, $idx2) use ($results) {
         return cmp($results[$idx1]['memory']['mean'], $results[$idx2]['memory']['mean']);
     });
+    usort($standings['bestArmPulls'], function ($idx1, $idx2) use ($results) {
+        return cmp($results[$idx2]['bestArmPulls']['mean'], $results[$idx1]['bestArmPulls']['mean']);
+    });
     # <editor-fold defaultstate="collapsed" desc="Latex Table Generation">
-    $hasTSPol = $hasUCB = false;
-    $limit = isset($options['limit']) ? (int) $options['limit'] : 999;
-    $latexTable = '\\begin{table}[!ht]
-\\begin{minipage}{\\textwidth}\\begin{center}
-\\caption{Uśrednione po ' . $repetitions . ' powtórzeniach wyniki eksperymentu posortowane wg. całkowitej straty dla problemu: ';
+    $limit = isset($options['limit']) ? (int) $options['limit'] : 100;
+    $latexTable = '\\begin{center}
+\\begin{longtable}{|m{4mm}<{\centering}m{60mm}<{\raggedright}m{12mm}<{\raggedleft}m{12mm}<{\raggedleft}m{12mm}<{\raggedleft}m{12mm}<{\raggedleft}m{18mm}<{\raggedleft}m{18mm}<{\raggedleft}|}
+\\caption{Uśrednione po ' . $repetitions . ' powtórzeniach wyniki eksperymentu posortowane wg. całkowitej straty dla problemu: $\{$';
     for ($i = 0; $i < count($arms); ++$i) {
         $latexTable .= ($i === 0 ? '' : ', ') . '$\\Bernoulli{' . strtr($arms[$i], ['.' => '{,}']) . '}$';
     }
-    $latexTable .= ' z liczbą ramion $K{=}' . count($arms) . '$ oraz skończoną liczbą iteracji $ H {=} ' . $h . '$.}
-\\label{table:' . $experimentMd5 . '}
-\\rowcolors{4}{white}{lightgray1}
-\\begin{tabular}{cp{155pt}rrrrrr}
-    \\hline
-    \\multirow{2}{*}[-0.6ex]{\#}
-    & \\multirow{2}{*}[-0.6ex]{\\centering Algorytm strategii wyboru}
-    & \\multicolumn{2}{|m{90pt}}{\\centering \vspace{2pt} \footnotesize Całkowita uzyskana strata}
-    & \\multicolumn{2}{|m{80pt}}{\\centering \footnotesize Czas wykonania ($s$)}
-    & \\multicolumn{2}{|m{70pt}}{\\centering \footnotesize Zajęta pamięć ($B$)}
-    \\\\ \\cline{3-8}
-    &
-    & \\multicolumn{1}{|b{45pt}}{\\centering \\vspace{2pt} \footnotesize $\\bar{x}$} & \\multicolumn{1}{|c}{\footnotesize $SD$}
-    & \\multicolumn{1}{|b{40pt}}{\\centering \\vspace{2pt} \footnotesize $\\bar{x}$} & \\multicolumn{1}{|c}{\footnotesize $SD$}
-    & \\multicolumn{1}{|b{35pt}}{\\centering \\vspace{2pt} \footnotesize $\\bar{x}$} & \\multicolumn{1}{|c}{\footnotesize $SD$}
-    \\\\ \\hline \\hline
+    $latexTable .= '$\}$ z liczbą ramion $K{=}' . count($arms) . '$ oraz skończoną liczbą iteracji $ H {=} ' . $h . '$.'
+        . (count($standings['regret']) > $limit ? ' Tabela przedstawia ' . $limit . ' najlepszych wyników z ' . count($standings['regret']) . '.' : '') . '}
+\\label{tablelong:' . $experimentMd5 . '} \\\\
+    
+\\hline 
+\\multirow{2}{*}[-0.1ex]{\footnotesize \\#}
+& \\multirow{2}{*}[-0.1ex]{\footnotesize Algorytm strategii wyboru}
+& \\multicolumn{2}{|m{26mm}<{\centering}}{\footnotesize Strata$^\star$}
+& \\multicolumn{2}{|m{26mm}<{\centering}}{\footnotesize Optymalny wybór$^{\star\star}$}
+& \\multicolumn{1}{|m{18mm}<{\centering}}{\footnotesize Czas wykonania~($s$)}
+& \\multicolumn{1}{|m{18mm}<{\centering}|}{\footnotesize Zajęta pamięć~($B$)} \\\\
+\\cline{3-8}
+&
+& \\multicolumn{1}{|m{12mm}<{\centering}}{\footnotesize $\\bar{x}$} & \\multicolumn{1}{|m{12mm}<{\centering}}{\footnotesize $SD$}
+& \\multicolumn{1}{|m{12mm}<{\centering}}{\footnotesize $\\bar{x}$} & \\multicolumn{1}{|m{12mm}<{\centering}}{\footnotesize $SD$}
+& \\multicolumn{1}{|m{18mm}<{\centering}}{\footnotesize $\\bar{x}$}
+& \\multicolumn{1}{|m{18mm}<{\centering}|}{\footnotesize $\\bar{x}$} \\\\
+\\hline 
+\\endfirsthead
+
+\\multicolumn{8}{c}{\\footnotesize \\tablename\\ \\thetable{} -- ciąg dalszy z poprzedniej strony} \\\\
+\\hline 
+\\multirow{2}{*}[-0.1ex]{\\footnotesize \\#}
+& \\multirow{2}{*}[-0.1ex]{\footnotesize Algorytm strategii wyboru}
+& \\multicolumn{2}{|m{18mm}<{\centering}}{\footnotesize Strata$^\star$}
+& \\multicolumn{2}{|m{18mm}<{\centering}}{\footnotesize Optymalny wybór$^{\star\star}$}
+& \\multicolumn{1}{|m{18mm}<{\centering}}{\footnotesize Czas wykonania~($s$)}
+& \\multicolumn{1}{|m{18mm}<{\centering}|}{\footnotesize Zajęta pamięć~($B$)} \\\\
+\\cline{3-8}
+&
+& \\multicolumn{1}{|m{8mm}<{\centering}}{\footnotesize $\\bar{x}$} & \\multicolumn{1}{|m{8mm}<{\centering}}{\footnotesize $SD$}
+& \\multicolumn{1}{|m{8mm}<{\centering}}{\footnotesize $\\bar{x}$} & \\multicolumn{1}{|m{8mm}<{\centering}}{\footnotesize $SD$}
+& \\multicolumn{1}{|m{18mm}<{\centering}}{\footnotesize $\\bar{x}$}
+& \\multicolumn{1}{|m{18mm}<{\centering}|}{\footnotesize $\\bar{x}$} \\\\
+\\hline
+\\endhead
+
+\\hline
+\\multicolumn{8}{|r|}{\\footnotesize kontynuacja na następnej stronie} \\\\
+\\hline
+\\endfoot
+
+\hline
+\arrayrulecolor{white}\hline
+\arrayrulecolor{white}\hline
+\arrayrulecolor{white}\hline
+\arrayrulecolor{white}\hline
+\arrayrulecolor{white}\hline
+\arrayrulecolor{white}\hline
+\arrayrulecolor{white}\hline
+\arrayrulecolor{white}\hline
+\arrayrulecolor{white}\hline
+\\rowcolor{white}
+\\multicolumn{8}{l}{\footnotesize $^\star$ Średnia całkowita uzyskana strata, liczoną wg. następującego wzoru: $ R{=} \sum_{t=1}^{H} ( \max\limits_{i=1,\ldots, K} \mathbb{E} \lbrack x_{i,t} \rbrack ) - \sum_{t=1}^{H} \mathbb{E} \lbrack x_{S_t,t} \rbrack $.} \\\\
+\\rowcolor{white}
+\\multicolumn{8}{l}{\footnotesize $^{\star\star}$ Średnia, wyrażona w procentach liczba iteracji, w których algorytm dokonał optymalnego wyboru.} \\\\
+\\endlastfoot
+
 ';
-    for ($i = 0; ($limit > 0 || $hasTSPol === false || $hasUCB === false) && $i < count($standings['regret']); ++$i) {
+    for ($i = 0; $limit > 0 && $i < count($standings['regret']); ++$i) {
         $idx = $standings['regret'][$i];
         $result = $results[$standings['regret'][$i]];
-        if ($result['policy']['archtype'] === 'TSPolP') {
-            $hasTSPol = true;
-        } else if ($result['policy']['archtype'] === 'UCB') {
-            $hasUCB = true;
-        } else if ($limit <= 0) {
-            continue;
-        } else {
-            $limit--;
-        }
-        $latexTable .= '    \footnotesize $' . ($i + 1) . '$ & \footnotesize ' . strtr($result['policy']['name'], ['=' => '{=}'])
+        $limit--;
+        $latexTable .= '\rowcolor{' . ($i % 2 == 0 ? 'lightgray2' : 'white') . '}
+';
+        $latexTable .= '\footnotesize $' . ($i + 1) . '$ & \footnotesize ' . strtr($result['policy']['name'], ['=' => '{=}'])
             . ' & \footnotesize ' . ($standings['regret'][0] === $idx ? '\boldmath' : '') . '$' . number_format($result['regret']['mean'], 2, '{,}', '') . '$'
             . ' & \footnotesize $\pm' . number_format($result['regret']['st.dev'], 2, '{,}', '') . '$'
+            . ' & \footnotesize ' . ($standings['bestArmPulls'][0] === $idx ? '\boldmath' : '') . '$' . number_format($result['bestArmPulls']['mean'] * 100, 2, '{,}', '') . '$'
+            . ' & \footnotesize $\pm' . number_format($result['bestArmPulls']['st.dev'] * 100, 2, '{,}', '') . '$'
             . ' & \footnotesize ' . ($standings['time'][0] === $idx ? '\boldmath' : '') . '$' . number_format($result['time']['mean'], 4, '{,}', '') . '$'
-            . ' & \footnotesize $\pm' . number_format($result['time']['st.dev'], 4, '{,}', '') . '$'
             . ' & \footnotesize ' . ($standings['memory'][0] === $idx ? '\boldmath' : '') . '$' . number_format($result['memory']['mean'], 0, '{,}', '') . '$'
-            . ' & \footnotesize $\pm' . number_format($result['memory']['st.dev'], 0, '{,}', '') . '$'
             . '\\\\
 ';
     }
-    $latexTable .= '    \\hline
-\\end{tabular}
-\\end{center}\\end{minipage}
-\\end{table}';
-    file_put_contents($standingsDir . '/table_' . $experimentMd5 . '.tex', $latexTable);
+    $latexTable .= '\\end{longtable}
+\\end{center}';
+    file_put_contents($standingsDir . '/table_long_' . $experimentMd5 . '.tex', $latexTable);
     $allLatexTables .=  $latexTable;
+    
+    
+    $limit = isset($options['limit']) ? (int) $options['limit'] : 100;
+    $latexTable = '\\begin{center}
+\\begin{table}
+\\caption{Uśrednione po ' . $repetitions . ' powtórzeniach wyniki eksperymentu posortowane wg. całkowitej straty dla problemu: $\{$';
+    for ($i = 0; $i < count($arms); ++$i) {
+        $latexTable .= ($i === 0 ? '' : ', ') . '$\\Bernoulli{' . strtr($arms[$i], ['.' => '{,}']) . '}$';
+    }
+    $latexTable .= '$\}$ z liczbą ramion $K{=}' . count($arms) . '$ oraz skończoną liczbą iteracji $ H {=} ' . $h . '$.'
+        . (count($standings['regret']) > $limit ? ' Tabela przedstawia ' . $limit . ' najlepszych wyników z ' . count($standings['regret']) . '.' : '') . '}
+\\label{table:' . $experimentMd5 . '}
+\\begin{tabular}{|m{4mm}<{\centering}m{60mm}<{\raggedright}m{12mm}<{\raggedleft}m{12mm}<{\raggedleft}m{12mm}<{\raggedleft}m{12mm}<{\raggedleft}m{18mm}<{\raggedleft}m{18mm}<{\raggedleft}|}
+    
+\\hline 
+\\multirow{2}{*}[-0.1ex]{\footnotesize \\#}
+& \\multirow{2}{*}[-0.1ex]{\footnotesize Algorytm strategii wyboru}
+& \\multicolumn{2}{|m{26mm}<{\centering}}{\footnotesize Strata$^\star$}
+& \\multicolumn{2}{|m{26mm}<{\centering}}{\footnotesize Optymalny wybór$^{\star\star}$}
+& \\multicolumn{1}{|m{18mm}<{\centering}}{\footnotesize Czas wykonania~($s$)}
+& \\multicolumn{1}{|m{18mm}<{\centering}|}{\footnotesize Zajęta pamięć~($B$)} \\\\
+\\cline{3-8}
+&
+& \\multicolumn{1}{|m{12mm}<{\centering}}{\footnotesize $\\bar{x}$} & \\multicolumn{1}{|m{12mm}<{\centering}}{\footnotesize $SD$}
+& \\multicolumn{1}{|m{12mm}<{\centering}}{\footnotesize $\\bar{x}$} & \\multicolumn{1}{|m{12mm}<{\centering}}{\footnotesize $SD$}
+& \\multicolumn{1}{|m{18mm}<{\centering}}{\footnotesize $\\bar{x}$}
+& \\multicolumn{1}{|m{18mm}<{\centering}|}{\footnotesize $\\bar{x}$} \\\\
+\\hline
+
+';
+    for ($i = 0; $limit > 0 && $i < count($standings['regret']); ++$i) {
+        $idx = $standings['regret'][$i];
+        $result = $results[$standings['regret'][$i]];
+        $limit--;
+        $latexTable .= '\rowcolor{' . ($i % 2 == 0 ? 'lightgray2' : 'white') . '}
+';
+        $latexTable .= '\footnotesize $' . ($i + 1) . '$ & \footnotesize ' . strtr($result['policy']['name'], ['=' => '{=}'])
+            . ' & \footnotesize ' . ($standings['regret'][0] === $idx ? '\boldmath' : '') . '$' . number_format($result['regret']['mean'], 2, '{,}', '') . '$'
+            . ' & \footnotesize $\pm' . number_format($result['regret']['st.dev'], 2, '{,}', '') . '$'
+            . ' & \footnotesize ' . ($standings['bestArmPulls'][0] === $idx ? '\boldmath' : '') . '$' . number_format($result['bestArmPulls']['mean'] * 100, 2, '{,}', '') . '$'
+            . ' & \footnotesize $\pm' . number_format($result['bestArmPulls']['st.dev'] * 100, 2, '{,}', '') . '$'
+            . ' & \footnotesize ' . ($standings['time'][0] === $idx ? '\boldmath' : '') . '$' . number_format($result['time']['mean'], 4, '{,}', '') . '$'
+            . ' & \footnotesize ' . ($standings['memory'][0] === $idx ? '\boldmath' : '') . '$' . number_format($result['memory']['mean'], 0, '{,}', '') . '$'
+            . '\\\\
+';
+    }
+    $latexTable .= '\hline
+\arrayrulecolor{white}\hline
+\arrayrulecolor{white}\hline
+\arrayrulecolor{white}\hline
+\arrayrulecolor{white}\hline
+\arrayrulecolor{white}\hline
+\arrayrulecolor{white}\hline
+\arrayrulecolor{white}\hline
+\arrayrulecolor{white}\hline
+\arrayrulecolor{white}\hline
+\\rowcolor{white}
+\\multicolumn{8}{l}{\footnotesize $^\star$ Średnia całkowita uzyskana strata, liczoną wg. następującego wzoru: $ R{=} \sum_{t=1}^{H} ( \max\limits_{i=1,\ldots, K} \mathbb{E} \lbrack x_{i,t} \rbrack ) - \sum_{t=1}^{H} \mathbb{E} \lbrack x_{S_t,t} \rbrack $.} \\\\
+\\rowcolor{white}
+\\multicolumn{8}{l}{\footnotesize $^{\star\star}$ Średnia, wyrażona w procentach liczba iteracji, w których algorytm dokonał optymalnego wyboru.} \\\\
+        
+\\end{tabular}
+\\end{table}
+\\end{center}';
+    file_put_contents($standingsDir . '/table_' . $experimentMd5 . '.tex', $latexTable);
+    //$allLatexTables .=  $latexTable;
     # </editor-fold>
     # <editor-fold defaultstate="collapsed" desc="Gather The Summative Standings">
-    foreach (['regret', 'time', 'memory'] as $metrics) {
+    foreach (['regret', 'time', 'memory', 'bestArmPulls'] as $metrics) {
         for ($i = 0; $i < count($standings[$metrics]); ++$i) {
             $summativeStandings[$standings[$metrics][$i]][$metrics][] = ($i + 1);
         }
@@ -121,15 +233,16 @@ foreach ($experiment['arms'] as $arms) {
 $nofProblems = count($experiment['arms']);
 $nofPolicies = count($experiment['policies']);
 $metricsLabels = [
-    'regret' => 'całkowitą uzyskaną stratę',
+    'regret' => 'całkowitą uzyskaną stratę, liczoną wg. następującego wzoru: $ R{=} \sum_{t=1}^{H} ( \max\limits_{i=1,\ldots, K} \mathbb{E} \lbrack x_{i,t} \rbrack ) - \sum_{t=1}^{H} \mathbb{E} \lbrack x_{S_t,t} \rbrack $',
     'time' => 'czas wykonania',
-    'memory' => 'zajętą pamięć'
+    'memory' => 'zajętą pamięć',
+    'bestArmPulls' => 'liczbę iteracji, w których algorytm dokonał optymalnego wyboru'
 ]; 
-foreach (['regret', 'time', 'memory'] as $metrics) {
+foreach (['regret', 'time', 'memory', 'bestArmPulls'] as $metrics) {
     foreach (array_keys($experiment['policies']) as $idx) {
         $summativeStandings[$idx][$metrics][] = number_format(array_reduce($summativeStandings[$idx][$metrics], function ($carry, $place) use ($nofProblems, $nofPolicies) {
             return $carry + 1/$nofProblems * (1 - ($place - 1) / ($nofPolicies - 1));
-        }, 0), 2, '{,}', '');
+        }, 0), 3, '{,}', '');
         $summativeStandings[$idx][$metrics] = array_map(function ($value) {
             return ($value === 1 ? '\\boldmath' : '') . '$' . $value . '$';
         }, $summativeStandings[$idx][$metrics]);
@@ -137,40 +250,118 @@ foreach (['regret', 'time', 'memory'] as $metrics) {
     uasort($summativeStandings, function ($policy1, $policy2) use ($metrics, $nofProblems) {
         return cmp($policy2[$metrics][$nofProblems], $policy1[$metrics][$nofProblems]);
     });
-    $latexTable = '\\begin{table}[!ht]
-\\begin{minipage}{\\textwidth}\\begin{center}
+    $limit = isset($options['limit']) ? (int) $options['limit'] : 100;
+    $latexTable = '\\begin{center}\\begin{longtable}{|m{4mm}<{\centering}m{' . (164 - 2 - 6 - 16 - 7 * $nofProblems) . 'mm}<{\raggedright}' . str_repeat('m{5mm}<{\centering}', $nofProblems). 'm{14mm}<{\raggedleft}|}
 \\caption{Zestawienie wyników, w którym algorytmy strategii wyboru zostały posortowane wg. wartości ważonej funkcji kompromisu wyliczonej na podstawie 
-miejsc w rankingach dla założonych w eksperymencie równoważnych problemów ze względu na ' . $metricsLabels[$metrics] . '.}
-\\label{table:' . $experiment['name'] . '_' . $metrics . '}
-\\begin{tabularx}{\\textwidth}{cX' . str_repeat('c', $nofProblems) . 'r}
+miejsc w rankingach dla założonych w eksperymencie równoważnych problemów ze względu na ' . $metricsLabels[$metrics] . '.'
+    . (count($summativeStandings) > $limit ? ' Tabela przedstawia ' . $limit . ' najlepszych wyników z ' . count($summativeStandings) . '.' : '') . '}
+\\label{table:' . $experiment['name'] . '_' . $metrics . '} \\\\
+ 
+\\hline 
+\\multicolumn{1}{|m{4mm}<{\centering}|}{\footnotesize \\#}
+& \\multicolumn{1}{m{' . (164 - 2 - 6 - 16 - 7 * $nofProblems) . 'mm}<{\raggedright}|}{\footnotesize Algorytm strategii wyboru}';
+for ($i = 1; $i <= $nofProblems; ++$i) {
+    $latexTable .= ' & \\multicolumn{1}{m{5mm}<{\centering}|}{\footnotesize ' . $i . '$^\star$}';
+}
+$latexTable .= '& \\multicolumn{1}{m{14mm}<{\centering}|}{\footnotesize $A^{WSM}$$^{\star\star}$} \\\\
+\\hline 
+\\endfirsthead
+
+\\multicolumn{' . ($nofProblems + 3) . '}{c}{\\footnotesize \\tablename\\ \\thetable{} -- ciąg dalszy z poprzedniej strony} \\\\
+\\hline  
+\\multicolumn{1}{|m{4mm}<{\centering}|}{\footnotesize \\#}
+& \\multicolumn{1}{m{' . (164 - 2 - 6 - 16 - 7 * $nofProblems) . 'mm}<{\raggedright}|}{\footnotesize Algorytm strategii wyboru}';
+for ($i = 1; $i <= $nofProblems; ++$i) {
+    $latexTable .= ' & \\multicolumn{1}{m{5mm}<{\centering}|}{\footnotesize ' . $i . '$^\star$}';
+}
+$latexTable .= '& \\multicolumn{1}{m{14mm}<{\centering}|}{\footnotesize $A^{WSM}$$^{\star\star}$} \\\\
+\\hline 
+\\endhead
+
 \\hline
-    \\# & Algorytm strategii wyboru';
-    for ($i = 1; $i <= $nofProblems; ++$i) {
-        $latexTable .= ' & \footnotesize ' . $i . '$^\star$';
+\\multicolumn{' . ($nofProblems + 3) . '}{|r|}{\\footnotesize kontynuacja na następnej stronie} \\\\
+\\hline
+\\endfoot
+
+\hline
+\arrayrulecolor{white}\hline
+\arrayrulecolor{white}\hline
+\arrayrulecolor{white}\hline
+\arrayrulecolor{white}\hline
+\arrayrulecolor{white}\hline
+\arrayrulecolor{white}\hline
+\arrayrulecolor{white}\hline
+\arrayrulecolor{white}\hline
+\arrayrulecolor{white}\hline
+\\multicolumn{' . ($nofProblems + 3) . '}{l}{\footnotesize $^\\star$ Numer problemu, dane w tabeli oznaczają miejsce w rankingu.} \\\\
+\\multicolumn{' . ($nofProblems + 3) . '}{l}{\\footnotesize $^{\\star\\star}$ $A^{WSM}{=}\sum\nolimits_{j=1}^{' . $nofProblems . '} (1{/}' . $nofProblems . ') (1 - (a_{ij} {-} 1) {/} ' . ($nofPolicies - 1) . ')$ gdzie $ a_{ij} $ to miejsce zajęte przez $ i $-tą strategię w $ j $-tym problemie.} \\\\
+\\endlastfoot
+
+';
+$place = 1;
+foreach ($summativeStandings as $policyIdx => $results) {
+    $latexTable .= '\rowcolor{' . ($place % 2 == 0 ? 'white' : 'lightgray2') . '}
+';
+    $latexTable .= '\footnotesize $' . $place++ . '$ & \footnotesize ' . strtr($policies[$policyIdx], ['=' => '{=}']) . ' & \footnotesize ' . implode(' & \footnotesize ', $results[$metrics]) . ' \\\\
+';
+    $limit--;
+    if ($limit === 0) {
+        break;
     }
-    $latexTable .= ' & \footnotesize $A^{WSM}$$^{\star\star}$ \\\\
-\\hline \\hline
-';
-    $place = 1;
-    foreach ($summativeStandings as $policyIdx => $results) {
-        $latexTable .= '\rowcolor{' . ($place % 2 == 1 ? 'white' : 'lightgray1') . '}
-';
-        $latexTable .= '\footnotesize $' . $place++ . '$ & \footnotesize ' . strtr($policies[$policyIdx], ['=' => '{=}']) . ' & \footnotesize ' . implode(' & \footnotesize ', $results[$metrics]) . ' \\\\
-';
-    }
-    $latexTable .= '\\hline
-\\multicolumn{' . ($nofProblems + 3) . '}{@{}l}{\footnotesize $^\star$ Numer problemu, dane w tabeli oznaczają miejsce w rankingu.} \\\\
-\\multicolumn{' . ($nofProblems + 3) . '}{@{}l}{\footnotesize $^{\star\star}$ $A^{WSM}{=}\sum\nolimits_{j=1}^{' . $nofProblems . '} (1{/}' . $nofProblems . ') (1 - (a_{ij} {-} 1) {/} ' . ($nofPolicies - 1) . ')$ gdzie $ a_{ij} $ to miejsce zajęte przez $ i $-tą strategię w $ j $-tym problemie.}
-\\end{tabularx}
-\\end{center}\\end{minipage}
-\\end{table}';
-    file_put_contents($standingsDir . '/table_' . $metrics . '.tex', $latexTable);
+}
+    $latexTable .= '\\end{longtable}\end{center}';
+    file_put_contents($standingsDir . '/table_long_' . $metrics . '.tex', $latexTable);
     $allLatexTables .= $latexTable;
+    
+    
+    
+    $limit = isset($options['limit']) ? (int) $options['limit'] : 100;
+    $latexTable = '\\begin{center}\\table
+\\caption{Zestawienie wyników, w którym algorytmy strategii wyboru zostały posortowane wg. wartości ważonej funkcji kompromisu wyliczonej na podstawie 
+miejsc w rankingach dla założonych w eksperymencie równoważnych problemów ze względu na ' . $metricsLabels[$metrics] . '.'
+    . (count($summativeStandings) > $limit ? ' Tabela przedstawia ' . $limit . ' najlepszych wyników z ' . count($summativeStandings) . '.' : '') . '}
+\\label{table:' . $experiment['name'] . '_' . $metrics . '}
+\\begin{tabular}{|m{4mm}<{\centering}m{' . (164 - 2 - 6 - 16 - 7 * $nofProblems) . 'mm}<{\raggedright}' . str_repeat('m{5mm}<{\centering}', $nofProblems). 'm{14mm}<{\raggedleft}|}
+ 
+\\hline 
+\\multicolumn{1}{|m{4mm}<{\centering}|}{\footnotesize \\#}
+& \\multicolumn{1}{m{' . (164 - 2 - 6 - 16 - 7 * $nofProblems) . 'mm}<{\raggedright}|}{\footnotesize Algorytm strategii wyboru}';
+for ($i = 1; $i <= $nofProblems; ++$i) {
+    $latexTable .= ' & \\multicolumn{1}{m{5mm}<{\centering}|}{\footnotesize ' . $i . '$^\star$}';
+}
+$latexTable .= '& \\multicolumn{1}{m{14mm}<{\centering}|}{\footnotesize $A^{WSM}$$^{\star\star}$} \\\\
+\\hline 
+';
+$place = 1;
+foreach ($summativeStandings as $policyIdx => $results) {
+    $latexTable .= '\rowcolor{' . ($place % 2 == 0 ? 'white' : 'lightgray2') . '}
+';
+    $latexTable .= '\footnotesize $' . $place++ . '$ & \footnotesize ' . strtr($policies[$policyIdx], ['=' => '{=}']) . ' & \footnotesize ' . implode(' & \footnotesize ', $results[$metrics]) . ' \\\\
+';
+    $limit--;
+    if ($limit === 0) {
+        break;
+    }
+}
+    $latexTable .= '\hline
+\arrayrulecolor{white}\hline
+\arrayrulecolor{white}\hline
+\arrayrulecolor{white}\hline
+\arrayrulecolor{white}\hline
+\arrayrulecolor{white}\hline
+\arrayrulecolor{white}\hline
+\arrayrulecolor{white}\hline
+\arrayrulecolor{white}\hline
+\arrayrulecolor{white}\hline
+\\multicolumn{' . ($nofProblems + 3) . '}{l}{\footnotesize $^\\star$ Numer problemu, dane w tabeli oznaczają miejsce w rankingu.} \\\\
+\\multicolumn{' . ($nofProblems + 3) . '}{l}{\\footnotesize $^{\\star\\star}$ $A^{WSM}{=}\sum\nolimits_{j=1}^{' . $nofProblems . '} (1{/}' . $nofProblems . ') (1 - (a_{ij} {-} 1) {/} ' . ($nofPolicies - 1) . ')$ gdzie $ a_{ij} $ to miejsce zajęte przez $ i $-tą strategię w $ j $-tym problemie.} \\\\
+\\end{tabular}\\end{table}\end{center}';
+    file_put_contents($standingsDir . '/table_' . $metrics . '.tex', $latexTable);
 }
 # </editor-fold>
 $template = file_get_contents($configuration['tables.template.filepath']);
 file_put_contents($standingsDir . '/all_tables.tex', strtr($template, ['{{tables}}' => $allLatexTables]));
-shell_exec('pdflatex -interaction=nonstopmode -shell-escape ' . realpath($standingsDir . '/all_tables.tex'));
+$out = shell_exec('pdflatex -interaction=nonstopmode -shell-escape ' . realpath($standingsDir . '/all_tables.tex'));
 foreach (glob('all_tables*') as $filename) {
     if (strpos($filename, '.pdf') !== false) {
         copy($filename, $standingsDir . '/all_tables.pdf');
