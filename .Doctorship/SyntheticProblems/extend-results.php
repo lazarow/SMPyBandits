@@ -35,7 +35,9 @@ foreach ($experiment['arms'] as $arms) {
             'mean' => Statistics::average($data['/env_0/regrets']),
             'median' => Statistics::median($data['/env_0/regrets']),
             'max' => max($data['/env_0/regrets']),
-            'st.dev' => Statistics::stdDev($data['/env_0/regrets'])
+            'st.dev' => Statistics::stdDev($data['/env_0/regrets']),
+            'q25' => Statistics::quartile25($data['/env_0/regrets']),
+            'q75' => Statistics::quartile75($data['/env_0/regrets'])
         ];
         // Add extra results values for figures
         $results['bestArmPulls'] = [

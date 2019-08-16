@@ -11,6 +11,7 @@ function cmp($val1, $val2) {
     return $val1 == $val2 ? 0 : ($val1 < $val2 ? -1 : 1);
 }
 $latexAllPlots = '';
+$latexAllHistograms = '';
 $plots = [];
 foreach ($experiment['arms'] as $arms) {
     $nofArms = count($arms);
@@ -74,19 +75,23 @@ foreach ($experiment['arms'] as $arms) {
         }
     }
     
+    // WYKRES STRATY
+    
     $latexFigure = '\begin{figure}
     \centering
     \includegraphics[width=\textwidth, angle=0]{' . $experiment['name'] . '/regret' . $md5 . '.pdf}
-    \caption{Wykres uśrednionej, po ' . $experiment['repetitions'] . ' powtórzeniach, całkowitej straty w kolejnych iteracjach dla problemu: $\{$';
+    \caption{Wykres uśrednionej po ' . $experiment['repetitions'] . ' powtórzeniach całkowitej straty w kolejnych iteracjach dla problemu: $\{$';
     for ($i = 0; $i < count($arms); ++$i) {
         $latexFigure .= ($i === 0 ? '' : ', ') . '$\\Bernoulli{' . strtr($arms[$i], ['.' => '{,}']) . '}$';
     }
     $latexFigure .= '$\}$ z liczbą ramion $K{=}' . count($arms) . '$ oraz skończoną liczbą iteracji $ H {=} ' . $h . '$.'
         . ($nofPolicies > 10 ? ' Wykres przedstawia 10 najlepszych wyników z ' . $nofPolicies . '.' : '') . '}
 \label{fig:regret' . $md5 . '}
-\end{figure}';
+\end{figure}
+';
     file_put_contents($plotsDir . '/regret' . $md5 . '.tex', $latexFigure);
     $latexAllPlots .= $latexFigure;
+    
     
     $nofDataPoints = count($points[$standings['regret'][0]]);
     $plots['regret' . $md5] = '\\begin{tikzpicture}
@@ -121,6 +126,131 @@ foreach ($experiment['arms'] as $arms) {
     $plots['regret' . $md5] .= '\\end{axis}
 \\end{tikzpicture}';
     
+    // WYKRES PUDEŁKOWY STRATY
+    
+    $latexFigure = '\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth, angle=0]{' . $experiment['name'] . '/boxregret' . $md5 . '.pdf}
+    \caption{Wykres pudełkowy uśrednionej po ' . $experiment['repetitions'] . ' powtórzeniach całkowitej straty dla problemu: $\{$';
+    for ($i = 0; $i < count($arms); ++$i) {
+        $latexFigure .= ($i === 0 ? '' : ', ') . '$\\Bernoulli{' . strtr($arms[$i], ['.' => '{,}']) . '}$';
+    }
+    $latexFigure .= '$\}$ z liczbą ramion $K{=}' . count($arms) . '$ oraz skończoną liczbą iteracji $ H {=} ' . $h . '$.'
+        . ($nofPolicies > 10 ? ' Wykres przedstawia 10 najlepszych wyników z ' . $nofPolicies . '.' : '') . '}
+\label{fig:boxregret' . $md5 . '}
+\end{figure}
+';
+    file_put_contents($plotsDir . '/boxregret' . $md5 . '.tex', $latexFigure);
+    $latexAllPlots .= $latexFigure;
+    
+    $plots['boxregret' . $md5] = '\\begin{tikzpicture}
+\\begin{axis}[
+    width=16.49cm,
+    y=-0.5cm,
+    bar width=0.3cm,
+    enlarge y limits={abs=0.45cm},
+    xticklabel style={/pgf/number format/1000 sep=},
+    ytick={' . implode(',', range(1, count($standings['regret']))) . '},
+    yticklabels={' . array_reduce($standings['regret'], function ($carry, $policyIdx) use ($policies) {
+        return $carry . (strlen($carry) ? ', ': '') . strtr($policies[$policyIdx]['policy']['name'], ['='=>'{=}', ',' => '{,}', '.' => '{,}']);
+    }, '') . '},
+    ymajorgrids=true,
+    grid style=dashed
+]
+';
+    foreach ($standings['regret'] as $policyIdx) {
+        $plots['boxregret' . $md5] .= '\addplot+[
+    boxplot prepared={
+      median=' . $policies[$policyIdx]['regret']['median'] . ',
+      upper quartile=' . $policies[$policyIdx]['regret']['q75'] . ',
+      lower quartile=' . $policies[$policyIdx]['regret']['q25'] . ',
+      upper whisker=' . $policies[$policyIdx]['regret']['max'] . ',
+      lower whisker=' . $policies[$policyIdx]['regret']['min'] . '
+    },
+    ] coordinates {};
+';
+    }
+    $plots['boxregret' . $md5] .= '\\end{axis}
+\\end{tikzpicture}';
+    
+    // WYKRES OPTYMALNYCH ZAGRAŃ
+    
+    $latexFigure = '\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth, angle=0]{' . $experiment['name'] . '/bestarm' . $md5 . '.pdf}
+    \caption{Wykres słupkowy przedstawiający uśrednioną po ' . $experiment['repetitions'] . ' powtórzeniach liczbę iteracji, w których algorytmy dokonały optymalnego wyboru dla problemu: $\{$';
+    for ($i = 0; $i < count($arms); ++$i) {
+        $latexFigure .= ($i === 0 ? '' : ', ') . '$\\Bernoulli{' . strtr($arms[$i], ['.' => '{,}']) . '}$';
+    }
+    $latexFigure .= '$\}$ z liczbą ramion $K{=}' . count($arms) . '$ oraz skończoną liczbą iteracji $ H {=} ' . $h . '$.'
+        . ($nofPolicies > 10 ? ' Wykres przedstawia 10 najlepszych wyników z ' . $nofPolicies . '.' : '') . '}
+\label{fig:bestarm' . $md5 . '}
+\end{figure}
+';
+    file_put_contents($plotsDir . '/bestarm' . $md5 . '.tex', $latexFigure);
+    $latexAllPlots .= $latexFigure;
+    
+    $plots['bestarm' . $md5] = '\\begin{tikzpicture}
+\\begin{axis}[
+    width=16.49cm,
+    xbar, xmin=0,
+    y=-0.5cm,
+    bar width=0.3cm,
+    enlarge y limits={abs=0.45cm},
+    /pgf/number format/use comma,
+    xlabel={Średnia, wyrażona w procentach liczba iteracji},
+    symbolic y coords={' . implode(',', array_map(function ($policyIdx) use ($policies) {
+        return '{' . strtr($policies[$policyIdx]['policy']['name'], ['='=>'{=}', ',' => '{,}', '.' => '{,}']) . '}';
+    }, $standings['bestArmPulls'])) . '},
+    ytick=data,
+    nodes near coords, 
+    nodes near coords align={horizontal},
+    ytick=data
+]
+\addplot[black,fill] coordinates {' . implode('', array_map(function ($policyIdx) use ($policies) {
+    return '(' . number_format($policies[$policyIdx]['bestArmPulls']['mean'] * 100, 2, '.', '') . ',{' . strtr($policies[$policyIdx]['policy']['name'], ['='=>'{=}', ',' => '{,}']) . '})';
+}, $standings['bestArmPulls'])) . '};
+\\end{axis}
+\\end{tikzpicture}';
+
+    // HISTOGRAM STRATY
+
+    if (array_key_exists('histograms', $options)) {
+        foreach ($standings['regret'] as $policyIdx) {
+            $latexFigure = '\begin{figure}
+    \centering
+    \includegraphics[width=\textwidth, angle=0]{' . $experiment['name'] . '/histogram' . $md5 . '_' . $policyIdx . '.pdf}
+    \caption{Histogram całkowitej straty dla algorytmu ' . strtr($policies[$policyIdx]['policy']['name'], ['='=>'{=}', ',' => '{,}', '.' => '{,}']) . ' i problemu: $\{$';
+    for ($i = 0; $i < count($arms); ++$i) {
+        $latexFigure .= ($i === 0 ? '' : ', ') . '$\\Bernoulli{' . strtr($arms[$i], ['.' => '{,}']) . '}$';
+    }
+    $latexFigure .= '$\}$ z liczbą ramion $K{=}' . count($arms) . '$ oraz skończoną liczbą iteracji $ H {=} ' . $h . '$.}
+\label{fig:histogram' . $md5 . '_' . $policyIdx . '}
+\end{figure}
+    ';
+            file_put_contents($plotsDir . '/histogram' . $md5 . '_' . $policyIdx . '.tex', $latexFigure);
+            $latexAllHistograms .= $latexFigure;
+            $plots['histogram' . $md5 . '_' . $policyIdx] = '\\begin{tikzpicture}
+\\begin{axis}[
+    width=16.49cm,
+    ybar interval,
+    xticklabel=\\pgfmathprintnumber\\tick,
+    /pgf/number format/use comma,
+    xmajorgrids=false,
+    ymin=0
+]
+\addplot+[draw=black,fill=white,hist={bins=6}]
+table[row sep=\\\\,y index=0] {
+data\\\\
+' . implode(' ', array_map(function ($data) {
+    return $data . '\\\\';
+}, $results[$idx]['/env_0/regrets'])) . '
+};
+\\end{axis}
+\\end{tikzpicture}';
+        }
+    }
+    
 }
 
 // single plots
@@ -147,6 +277,19 @@ foreach (glob('all_plots*') as $filename) {
         copy($filename, $plotsDir . '/all_plots.pdf');
     }
     unlink($filename);
+}
+
+// all histograms
+if (array_key_exists('histograms', $options)) {
+    $template = file_get_contents($configuration['tables.template.filepath']);
+    file_put_contents($plotsDir . '/all_histograms.tex', strtr($template, ['{{tables}}' => $latexAllHistograms]));
+    $out = shell_exec('pdflatex -interaction=nonstopmode -shell-escape ' . realpath($plotsDir . '/all_histograms.tex'));
+    foreach (glob('all_histograms*') as $filename) {
+        if (strpos($filename, '.pdf') !== false) {
+            copy($filename, $plotsDir . '/all_histograms.pdf');
+        }
+        unlink($filename);
+    }
 }
 
 file_put_contents($plotsDir . '/plots.end', 'done');

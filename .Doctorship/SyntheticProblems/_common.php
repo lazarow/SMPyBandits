@@ -7,7 +7,7 @@
  */
 ini_set('memory_limit', '4096M');
 
-$options = getopt('c:e:', ['force','limit:']);
+$options = getopt('c:e:', ['force','limit:','histograms']);
 
 function getConfiguration()
 {
