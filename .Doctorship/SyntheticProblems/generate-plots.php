@@ -244,7 +244,7 @@ table[row sep=\\\\,y index=0] {
 data\\\\
 ' . implode(' ', array_map(function ($data) {
     return $data . '\\\\';
-}, $results[$idx]['/env_0/regrets'])) . '
+}, $results[$policyIdx]['/env_0/regrets'])) . '
 };
 \\end{axis}
 \\end{tikzpicture}';
