@@ -77,7 +77,7 @@ foreach ($experiment['arms'] as $arms) {
     $latexFigure = '\begin{figure}
     \centering
     \includegraphics[width=\textwidth, angle=0]{' . $experiment['name'] . '/regret' . $md5 . '.pdf}
-    \caption{Wykres uśrednionej całkowitej straty, liczoną wg. następującego wzoru: $ R{=} \sum_{t=1}^{H} ( \max\limits_{i=1,\ldots, K} \mathbb{E} \lbrack x_{i,t} \rbrack ) - \sum_{t=1}^{H} \mathbb{E} \lbrack x_{S_t,t} \rbrack $, w kolejnych iteracjach dla problemu: $\{$';
+    \caption{Wykres uśrednionej, po ' . $experiment['repetitions'] . ' powtórzeniach, całkowitej straty w kolejnych iteracjach dla problemu: $\{$';
     for ($i = 0; $i < count($arms); ++$i) {
         $latexFigure .= ($i === 0 ? '' : ', ') . '$\\Bernoulli{' . strtr($arms[$i], ['.' => '{,}']) . '}$';
     }
@@ -96,9 +96,9 @@ foreach ($experiment['arms'] as $arms) {
     legend entries = {' . array_reduce($standings['regret'], function ($carry, $policyIdx) use ($policies) {
         return $carry . strtr($policies[$policyIdx]['policy']['name'], ['='=>'{=}']) . '\\\\';
     }, '') . '},
-    xlabel={Krok czasowy $t$},
+    xlabel={Krok czasowy $t \ldots H$},
     xticklabel style={/pgf/number format/1000 sep=},
-    ylabel={Uśredniona całkowita strata},
+    ylabel={Całkowita strata $ \bar{R}^E_t{=} \sum_{s=1}^{t} \left( \max\limits_{i=1,\ldots, K} \mathbb{E} \lbrack x_{i,s} \rbrack \right) - \sum_{s=1}^{t} \mathbb{E} \lbrack x_{S_s,s} \rbrack $},
     xmin=0, xmax=' . $h . ',
     ymin=0, ymax=' . max(array_map(function ($data) { return max($data['/env_0/cumulatedRegret']); }, $results)) . ',
     legend pos=north west,

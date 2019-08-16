@@ -82,7 +82,7 @@ foreach ($experiment['arms'] as $arms) {
 \\hline 
 \\multirow{2}{*}[-0.1ex]{\footnotesize \\#}
 & \\multirow{2}{*}[-0.1ex]{\footnotesize Algorytm strategii wyboru}
-& \\multicolumn{2}{|m{26mm}<{\centering}}{\footnotesize Strata$^\star$}
+& \\multicolumn{2}{|m{26mm}<{\centering}}{\footnotesize Całkowita strata$^\star$}
 & \\multicolumn{2}{|m{26mm}<{\centering}}{\footnotesize Optymalny wybór$^{\star\star}$}
 & \\multicolumn{1}{|m{18mm}<{\centering}}{\footnotesize Czas wykonania~($s$)}
 & \\multicolumn{1}{|m{18mm}<{\centering}|}{\footnotesize Zajęta pamięć~($B$)} \\\\
@@ -95,18 +95,18 @@ foreach ($experiment['arms'] as $arms) {
 \\hline 
 \\endfirsthead
 
-\\multicolumn{8}{c}{\\footnotesize \\tablename\\ \\thetable{} -- ciąg dalszy z poprzedniej strony} \\\\
+\\multicolumn{8}{c}{\\footnotesize \\tablename \\thetable{} -- ciąg dalszy z poprzedniej strony} \\\\
 \\hline 
-\\multirow{2}{*}[-0.1ex]{\\footnotesize \\#}
+\\multirow{2}{*}[-0.1ex]{\footnotesize \\#}
 & \\multirow{2}{*}[-0.1ex]{\footnotesize Algorytm strategii wyboru}
-& \\multicolumn{2}{|m{18mm}<{\centering}}{\footnotesize Strata$^\star$}
-& \\multicolumn{2}{|m{18mm}<{\centering}}{\footnotesize Optymalny wybór$^{\star\star}$}
+& \\multicolumn{2}{|m{26mm}<{\centering}}{\footnotesize Całkowita strata$^\star$}
+& \\multicolumn{2}{|m{26mm}<{\centering}}{\footnotesize Optymalny wybór$^{\star\star}$}
 & \\multicolumn{1}{|m{18mm}<{\centering}}{\footnotesize Czas wykonania~($s$)}
 & \\multicolumn{1}{|m{18mm}<{\centering}|}{\footnotesize Zajęta pamięć~($B$)} \\\\
 \\cline{3-8}
 &
-& \\multicolumn{1}{|m{8mm}<{\centering}}{\footnotesize $\\bar{x}$} & \\multicolumn{1}{|m{8mm}<{\centering}}{\footnotesize $SD$}
-& \\multicolumn{1}{|m{8mm}<{\centering}}{\footnotesize $\\bar{x}$} & \\multicolumn{1}{|m{8mm}<{\centering}}{\footnotesize $SD$}
+& \\multicolumn{1}{|m{12mm}<{\centering}}{\footnotesize $\\bar{x}$} & \\multicolumn{1}{|m{12mm}<{\centering}}{\footnotesize $SD$}
+& \\multicolumn{1}{|m{12mm}<{\centering}}{\footnotesize $\\bar{x}$} & \\multicolumn{1}{|m{12mm}<{\centering}}{\footnotesize $SD$}
 & \\multicolumn{1}{|m{18mm}<{\centering}}{\footnotesize $\\bar{x}$}
 & \\multicolumn{1}{|m{18mm}<{\centering}|}{\footnotesize $\\bar{x}$} \\\\
 \\hline
@@ -129,7 +129,7 @@ foreach ($experiment['arms'] as $arms) {
 \\arrayrulecolor{white}\\hline
 \\arrayrulecolor{black}
 \\rowcolor{white}
-\\multicolumn{8}{l}{\footnotesize $^\star$ Średnia całkowita uzyskana strata, liczoną wg. następującego wzoru: $ R{=} \sum_{t=1}^{H} ( \max\limits_{i=1,\ldots, K} \mathbb{E} \lbrack x_{i,t} \rbrack ) - \sum_{t=1}^{H} \mathbb{E} \lbrack x_{S_t,t} \rbrack $.} \\\\
+\\multicolumn{8}{l}{\footnotesize $^\star$ Średnia całkowita strata, liczoną wg. następującego wzoru: $ \bar{R}^E{=} \sum_{t=1}^{H} \left( \max\limits_{i=1,\ldots, K} \mathbb{E} \lbrack x_{i,t} \rbrack \right) - \sum_{t=1}^{H} \mathbb{E} \lbrack x_{S_t,t} \rbrack $.} \\\\
 \\rowcolor{white}
 \\multicolumn{8}{l}{\footnotesize $^{\star\star}$ Średnia, wyrażona w procentach liczba iteracji, w których algorytm dokonał optymalnego wyboru.} \\\\
 \\endlastfoot
@@ -172,7 +172,7 @@ foreach ($experiment['arms'] as $arms) {
 \\hline 
 \\multirow{2}{*}[-0.1ex]{\footnotesize \\#}
 & \\multirow{2}{*}[-0.1ex]{\footnotesize Algorytm strategii wyboru}
-& \\multicolumn{2}{|m{26mm}<{\centering}}{\footnotesize Strata$^\star$}
+& \\multicolumn{2}{|m{26mm}<{\centering}}{\footnotesize Całkowita strata$^\star$}
 & \\multicolumn{2}{|m{26mm}<{\centering}}{\footnotesize Optymalny wybór$^{\star\star}$}
 & \\multicolumn{1}{|m{18mm}<{\centering}}{\footnotesize Czas wykonania~($s$)}
 & \\multicolumn{1}{|m{18mm}<{\centering}|}{\footnotesize Zajęta pamięć~($B$)} \\\\
@@ -213,7 +213,7 @@ foreach ($experiment['arms'] as $arms) {
 \\arrayrulecolor{white}\\hline
 \\arrayrulecolor{black}
 \\rowcolor{white}
-\\multicolumn{8}{l}{\footnotesize $^\star$ Średnia całkowita uzyskana strata, liczoną wg. następującego wzoru: $ R{=} \sum_{t=1}^{H} ( \max\limits_{i=1,\ldots, K} \mathbb{E} \lbrack x_{i,t} \rbrack ) - \sum_{t=1}^{H} \mathbb{E} \lbrack x_{S_t,t} \rbrack $.} \\\\
+\\multicolumn{8}{l}{\footnotesize $^\star$ Średnia całkowita strata, liczoną wg. następującego wzoru: $ \bar{R}^E{=} \sum_{t=1}^{H} \left( \max\limits_{i=1,\ldots, K} \mathbb{E} \lbrack x_{i,t} \rbrack \right) - \sum_{t=1}^{H} \mathbb{E} \lbrack x_{S_t,t} \rbrack $.} \\\\
 \\rowcolor{white}
 \\multicolumn{8}{l}{\footnotesize $^{\star\star}$ Średnia, wyrażona w procentach liczba iteracji, w których algorytm dokonał optymalnego wyboru.} \\\\
         
@@ -235,7 +235,7 @@ foreach ($experiment['arms'] as $arms) {
 $nofProblems = count($experiment['arms']);
 $nofPolicies = count($experiment['policies']);
 $metricsLabels = [
-    'regret' => 'całkowitą uzyskaną stratę, liczoną wg. następującego wzoru: $ R{=} \sum_{t=1}^{H} ( \max\limits_{i=1,\ldots, K} \mathbb{E} \lbrack x_{i,t} \rbrack ) - \sum_{t=1}^{H} \mathbb{E} \lbrack x_{S_t,t} \rbrack $',
+    'regret' => 'całkowitą stratę, liczoną wg. następującego wzoru: $ \bar{R}^E{=} \sum_{t=1}^{H} \left( \max\limits_{i=1,\ldots, K} \mathbb{E} \lbrack x_{i,t} \rbrack \right) - \sum_{t=1}^{H} \mathbb{E} \lbrack x_{S_t,t} \rbrack $',
     'time' => 'czas wykonania',
     'memory' => 'zajętą pamięć',
     'bestArmPulls' => 'liczbę iteracji, w których algorytm dokonał optymalnego wyboru'
