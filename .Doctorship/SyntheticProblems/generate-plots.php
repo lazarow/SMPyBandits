@@ -106,7 +106,7 @@ foreach ($experiment['arms'] as $arms) {
     ylabel={Całkowita strata $ \bar{R}^E_t{=} \sum_{s=1}^{t} \left( \max\limits_{i=1,\ldots, K} \mathbb{E} \lbrack x_{i,s} \rbrack \right) - \sum_{s=1}^{t} \mathbb{E} \lbrack x_{S_s,s} \rbrack $},
     xmin=0, xmax=' . $h . ',
     ymin=0, ymax=' . max(array_map(function ($data) { return max($data['/env_0/cumulatedRegret']); }, $results)) . ',
-    legend pos=north west,
+    legend pos=outer north east,
     legend cell align={left},
     ymajorgrids=true,
     grid style=dashed,
@@ -146,19 +146,19 @@ foreach ($experiment['arms'] as $arms) {
     $plots['boxregret' . $md5] = '\\begin{tikzpicture}
 \\begin{axis}[
     width=16.49cm,
-    y=-0.5cm,
-    bar width=0.3cm,
-    enlarge y limits={abs=0.45cm},
+    y=0.7cm,
+    bar width=0.65cm,
+    enlarge y limits={abs=0.5cm},
     xticklabel style={/pgf/number format/1000 sep=},
     ytick={' . implode(',', range(1, count($standings['regret']))) . '},
-    yticklabels={' . array_reduce($standings['regret'], function ($carry, $policyIdx) use ($policies) {
+    yticklabels={' . array_reduce(array_reverse($standings['regret']), function ($carry, $policyIdx) use ($policies) {
         return $carry . (strlen($carry) ? ', ': '') . strtr($policies[$policyIdx]['policy']['name'], ['='=>'{=}', ',' => '{,}', '.' => '{,}']);
     }, '') . '},
     ymajorgrids=true,
     grid style=dashed
 ]
 ';
-    foreach ($standings['regret'] as $policyIdx) {
+    foreach (array_reverse($standings['regret']) as $policyIdx) {
         $plots['boxregret' . $md5] .= '\addplot+[
     boxplot prepared={
       median=' . $policies[$policyIdx]['regret']['median'] . ',
@@ -194,28 +194,33 @@ foreach ($experiment['arms'] as $arms) {
 \\begin{axis}[
     width=16.49cm,
     xbar, xmin=0,
-    y=-0.5cm,
-    bar width=0.3cm,
-    enlarge y limits={abs=0.45cm},
+    y=0.7cm,
+    bar width=0.6cm,
+    enlarge y limits={abs=0.9cm},
     /pgf/number format/use comma,
     xlabel={Średnia, wyrażona w procentach liczba iteracji},
-    symbolic y coords={' . implode(',', array_map(function ($policyIdx) use ($policies) {
+    ytick={' . implode(',', range(1, count($standings['bestArmPulls']))) . '},
+    yticklabels={' . implode(',', array_map(function ($policyIdx) use ($policies) {
         return '{' . strtr($policies[$policyIdx]['policy']['name'], ['='=>'{=}', ',' => '{,}', '.' => '{,}']) . '}';
-    }, $standings['bestArmPulls'])) . '},
-    ytick=data,
+    }, array_reverse($standings['bestArmPulls']))) . '},
     nodes near coords, 
-    nodes near coords align={horizontal},
-    ytick=data
+    nodes near coords align={horizontal}
 ]
-\addplot[black,fill] coordinates {' . implode('', array_map(function ($policyIdx) use ($policies) {
-    return '(' . number_format($policies[$policyIdx]['bestArmPulls']['mean'] * 100, 2, '.', '') . ',{' . strtr($policies[$policyIdx]['policy']['name'], ['='=>'{=}', ',' => '{,}']) . '})';
-}, $standings['bestArmPulls'])) . '};
+\addplot[fill=barcolor] coordinates {' . implode('', array_map(function ($policyIdx, $y) use ($policies) {
+    return '(' . number_format($policies[$policyIdx]['bestArmPulls']['mean'] * 100, 2, '.', '') . ',' . ($y + 1) . ')';
+}, array_reverse($standings['bestArmPulls']), array_keys($standings['bestArmPulls']))) . '};
 \\end{axis}
 \\end{tikzpicture}';
 
     // HISTOGRAM STRATY
 
     if (array_key_exists('histograms', $options)) {
+        $xmax = 0;
+        foreach ($standings['regret'] as $policyIdx) {
+            if (max($results[$policyIdx]['/env_0/regrets']) > $xmax) {
+                $xmax = max($results[$policyIdx]['/env_0/regrets']);
+            }
+        }
         foreach ($standings['regret'] as $policyIdx) {
             $latexFigure = '\begin{figure}
     \centering
@@ -234,12 +239,18 @@ foreach ($experiment['arms'] as $arms) {
 \\begin{axis}[
     width=16.49cm,
     ybar interval,
-    xticklabel=\\pgfmathprintnumber\\tick,
     /pgf/number format/use comma,
     xmajorgrids=false,
-    ymin=0
+    ymajorgrids=true,
+    enlarge x limits={abs=0.9cm},
+    x tick label as interval=false,
+    xtick={},
+    title={' . strtr($policies[$policyIdx]['policy']['name'], ['='=>'{=}', ',' => '{,}', '.' => '{,}']) . '},
+    ymin=0,
+    xmin=0,
+    xmax=' . $xmax . '
 ]
-\addplot+[draw=black,fill=white,hist={bins=6}]
+\addplot+[draw=black,fill=barcolor,hist={bins=40}]
 table[row sep=\\\\,y index=0] {
 data\\\\
 ' . implode(' ', array_map(function ($data) {
@@ -249,6 +260,29 @@ data\\\\
 \\end{axis}
 \\end{tikzpicture}';
         }
+        
+        // All histograms grid
+        $latexFigure = '\begin{figure}
+    \centering';
+    //
+    foreach ($standings['regret'] as $policyIdx) {
+        $latexFigure .= '\begin{subfigure}
+    \centering
+    \includegraphics[width=0.475\textwidth, angle=0]{' . $experiment['name'] . '/histogram' . $md5 . '_' . $policyIdx . '.pdf}
+\end{subfigure}
+';
+    }
+    $latexFigure .= '\caption{Histogramy całkowitej straty dla problemu: $\{$';
+    for ($i = 0; $i < count($arms); ++$i) {
+        $latexFigure .= ($i === 0 ? '' : ', ') . '$\\Bernoulli{' . strtr($arms[$i], ['.' => '{,}']) . '}$';
+    }
+    $latexFigure .= '$\}$ z liczbą ramion $K{=}' . count($arms) . '$ oraz skończoną liczbą iteracji $ H {=} ' . $h . '$.}
+\label{fig:histogram' . $md5 . '}
+\end{figure}
+    ';
+        file_put_contents($plotsDir . '/histogram' . $md5 . '.tex', $latexFigure);
+        $latexAllHistograms .= $latexFigure;
+        
     }
     
 }
