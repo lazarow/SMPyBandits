@@ -80,8 +80,8 @@ class TSPolP(object):
 
     def duelFunction(self, a, b):
         n = self.pulls[a] + self.pulls[b]
-        va = self.rewards[a] / self.pulls[a] + math.sqrt(self.beta * math.log(n) / self.pulls[a]) + 0.00000001 * random.random()
-        vb = self.rewards[b] / self.pulls[b] + math.sqrt(self.beta * math.log(n) / self.pulls[b]) + 0.00000001 * random.random()
+        va = self.rewards[a] / self.pulls[a] + math.sqrt(self.beta * math.log(n) / (2 * self.pulls[a])) + 0.00000001 * random.random()
+        vb = self.rewards[b] / self.pulls[b] + math.sqrt(self.beta * math.log(n) / (2 * self.pulls[b])) + 0.00000001 * random.random()
         return 1 if va >= vb else 0
 
     def handleCollision(self, arm):

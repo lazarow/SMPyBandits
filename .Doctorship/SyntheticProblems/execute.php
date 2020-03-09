@@ -42,7 +42,7 @@ for ($i = 0; $i < count($queue); ++$i) {
     // Copying the SMPyBandits configuration file
     copy($experimentDir . '/configuration_experiment.py', $configuration['smpybandits.dir'] . '/configuration_experiment.py');
     // Conducting the experiment
-    $smpybanditsOutput = utf8_encode(shell_exec(($isWin ? 'set NOPLOTS=True&& ' : 'NOPLOTS=True ') . 'python ' . $configuration['smpybandits.dir'] . '/main.py configuration_experiment'));
+    $smpybanditsOutput = utf8_encode(shell_exec(($isWin ? 'set NOPLOTS=True&& ' : 'NOPLOTS=True ') . 'python -W ignore ' . $configuration['smpybandits.dir'] . '/main.py configuration_experiment'));
     file_put_contents($experimentDir . '/smpybandits_output.txt', $smpybanditsOutput);
     // Copying the HDF5 file (raw data)
     //$plotsDir = $configuration['smpybandits.dir'] . '/plots/SP__K' . count($experiment['arms']) . '_T' . $h . '_N' . $experiment['repetitions'] . '__1_algos';
@@ -66,7 +66,7 @@ for ($i = 0; $i < count($queue); ++$i) {
         $experiment['regret']['max'] = (float) $regretMatches[6][$idx];
         $experiment['regret']['st.dev'] = (float) $regretMatches[7][$idx];
     }
-    $timePattern = "/For policy #[0-9]+ called '(.*)' \.\.\.\s+([0-9\.-e\+]+) [±Â]+? ([0-9\.-e]+)/mi";
+    $timePattern = "/For policy #[0-9]+ called '(.*)' \.\.\.\s+([0-9\.-e\+]+) ms [±Â]+? ([0-9\.-e]+) ms/mi";
     $timeMatches = [];
     preg_match_all($timePattern, $smpybanditsOutput, $timeMatches);
     foreach (array_keys($timeMatches[0]) as $idx) {
