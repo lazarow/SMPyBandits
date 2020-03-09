@@ -85,6 +85,7 @@ class CD_IndexPolicy(BaseWrapperPolicy):
         self.all_rewards = [[] for _ in range(self.nbArms)]  #: Keep in memory all the rewards obtained since the last restart on that arm.
         self.last_pulls = np.zeros(nbArms, dtype=int)  #: Keep in memory the number times since last restart. Start with -1 (never seen)
         self.last_restart_times = np.zeros(nbArms, dtype=int)  #: Keep in memory the times of last restarts (for each arm).
+        self.number_of_restart = 0  #: Keep in memory the number of restarts.
 
     def __str__(self):
         return r"CD-{}($\varepsilon={:.3g}$, $\gamma={:.3g}$, {}{})".format(self._policy.__name__, self.epsilon, self.proba_random_exploration, "" if self._per_arm_restart else "Global", ", lazy detect {}".format(self.lazy_detect_change_only_x_steps) if self.lazy_detect_change_only_x_steps != LAZY_DETECT_CHANGE_ONLY_X_STEPS else "")
@@ -126,6 +127,7 @@ class CD_IndexPolicy(BaseWrapperPolicy):
         else:
             has_detected, position = has_detected_and_maybe_position
         if not has_detected: return
+        self.number_of_restart += 1
         if position is None:
             # print("For a player {} a change was detected at time {} for arm {}, after {} pulls of that arm (giving mean reward = {:.3g}). Last restart on that arm was at tau = {}".format(self, self.t, arm, self.last_pulls[arm], np.sum(self.all_rewards[arm]) / self.last_pulls[arm], self.last_restart_times[arm]))  # DEBUG
 
@@ -228,6 +230,11 @@ LAZY_TRY_VALUE_S_ONLY_X_STEPS = 1
 LAZY_TRY_VALUE_S_ONLY_X_STEPS = 10
 
 
+#: Default value of ``use_localization`` for policies. All the experiments I tried showed that the localization always helps improving learning, so the default value is set to True.
+USE_LOCALIZATION = False
+USE_LOCALIZATION = True
+
+
 class UCBLCB_IndexPolicy(CD_IndexPolicy):
     r""" The UCBLCB-UCB generic policy for non-stationary bandits, from [[Improved Changepoint Detection for Piecewise i.i.d Bandits, by S. Mukherjee  & O.-A. Maillard, preprint 2018](https://subhojyoti.github.io/pdf/aistats_2019.pdf)].
 
@@ -236,7 +243,7 @@ class UCBLCB_IndexPolicy(CD_IndexPolicy):
     def __init__(self, nbArms,
             delta=None, delta0=1.0,
             lazy_try_value_s_only_x_steps=LAZY_TRY_VALUE_S_ONLY_X_STEPS,
-            use_localization=False,
+            use_localization=USE_LOCALIZATION,
             *args, **kwargs
         ):
         super(UCBLCB_IndexPolicy, self).__init__(nbArms, per_arm_restart=False, *args, **kwargs)

@@ -5,7 +5,8 @@
 
 This repository contains the code of [Lilian Besson's](https://perso.crans.org/besson/) numerical environment, written in [Python (2 or 3)](https://www.python.org/), for numerical simulations on :slot_machine: *single*-player and *multi*-players [Multi-Armed Bandits (MAB)](https://en.wikipedia.org/wiki/Multi-armed_bandit) algorithms.
 
-A complete Sphinx-generated documentation is on [SMPyBandits.GitHub.io](https://smpybandits.github.io/).
+- A complete Sphinx-generated documentation is on [SMPyBandits.GitHub.io](https://smpybandits.github.io/).
+- You can also browse online the results of extensive benchmarks, powered by [Airspeed Velocity](https://asv.readthedocs.io/en/stable/using.html), on [this page](https://perso.crans.org/besson/phd/SMPyBandits-benchmarks/) (code on [SMPyBandits-benchmarks](https://github.com/Naereen/SMPyBandits-benchmarks/)).
 
 ## Quick presentation
 
@@ -18,11 +19,11 @@ More recent examples are [klUCBswitch](https://smpybandits.github.io/docs/Polici
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://GitHub.com/SMPyBandits/SMPyBandits/graphs/commit-activity)
 [![Ask Me Anything !](https://img.shields.io/badge/Ask%20me-anything-1abc9c.svg)](https://GitHub.com/Naereen/ama)
 [![Analytics](https://ga-beacon.appspot.com/UA-38514290-17/github.com/SMPyBandits/SMPyBandits/README.md?pixel)](https://GitHub.com/SMPyBandits/SMPyBandits/)
-[![![PyPI version](https://img.shields.io/pypi/v/smpybandits.svg)](https://pypi.org/project/SMPyBandits)](https://pypi.org/project/SMPyBandits)
-[![![PyPI implementation](https://img.shields.io/pypi/implementation/smpybandits.svg)](https://pypi.org/project/SMPyBandits)](https://pypi.org/project/SMPyBandits)
-[![![PyPI pyversions](https://img.shields.io/pypi/pyversions/smpybandits.svg?logo=python)](https://pypi.org/project/SMPyBandits)](https://pypi.org/project/SMPyBandits)
-[![![PyPI download](https://img.shields.io/pypi/dm/smpybandits.svg)](https://pypi.org/project/SMPyBandits)](https://pypi.org/project/SMPyBandits)
-[![![PyPI status](https://img.shields.io/pypi/status/smpybandits.svg)](https://pypi.org/project/SMPyBandits)](https://pypi.org/project/SMPyBandits)
+[![PyPI version](https://img.shields.io/pypi/v/smpybandits.svg)](https://pypi.org/project/SMPyBandits)
+[![PyPI implementation](https://img.shields.io/pypi/implementation/smpybandits.svg)](https://pypi.org/project/SMPyBandits)
+[![PyPI pyversions](https://img.shields.io/pypi/pyversions/smpybandits.svg?logo=python)](https://pypi.org/project/SMPyBandits)
+[![PyPI download](https://img.shields.io/pypi/dm/smpybandits.svg)](https://pypi.org/project/SMPyBandits)
+[![PyPI status](https://img.shields.io/pypi/status/smpybandits.svg)](https://pypi.org/project/SMPyBandits)
 [![Documentation Status](https://readthedocs.org/projects/smpybandits/badge/?version=latest)](https://SMPyBandits.ReadTheDocs.io/en/latest/?badge=latest)
 [![Build Status](https://travis-ci.org/SMPyBandits/SMPyBandits.svg?branch=master)](https://travis-ci.org/SMPyBandits/SMPyBandits)
 [![Stars of https://github.com/SMPyBandits/SMPyBandits/](https://badgen.net/github/stars/SMPyBandits/SMPyBandits)](https://GitHub.com/SMPyBandits/SMPyBandits/stargazers)
@@ -148,7 +149,7 @@ pip install -r requirements_full.txt
 # run a single-player simulation!
 N=100 T=10000 K=9 N_JOBS=4 make single
 # run a multi-player simulation!
-N=100 T=10000 M=3 K=9 N_JOBS=4 make more
+N=100 T=10000 M=3 K=9 N_JOBS=4 make moremulti
 ```
 
 You can also install it directly with [`pip`](https://pip.pypa.io/) and from GitHub:
@@ -164,6 +165,23 @@ pip install git+https://github.com/SMPyBandits/SMPyBandits.git#egg=SMPyBandits[f
 
 > - If speed matters to you and you want to use algorithms based on [kl-UCB](https://smpybandits.github.io/docs/Policies.klUCB.html), you should take the time to build and install the fast C implementation of the utilities KL functions. Default is to use [kullback.py](https://smpybandits.github.io/docs/Policies.kullback.html), but using [the C version from Policies/C/](Policies/C/) really speeds up the computations. Just follow the instructions, it should work well (you need `gcc` to be installed).
 > - And if speed matters, be sure that you have a working version of [Numba](https://numba.pydata.org/), it is used by many small functions to (try to automatically) speed up the computations.
+
+### Nix
+
+A pinned [Nix](https://nixos.org) environment is available for this experimental setup in the [`nix/pkgs/`](nix/pkgs) directory.
+From the root of the project:
+
+```bash 
+$ nix-shell
+nix-shell$ jupyter_notebook 
+nix-shell$ N=100 T=10000 K=9 N_JOBS=4 make single
+``` 
+
+The following one-liner lets you explore one of the example notebooks from any Nix-enabled machine, without cloning the repository:
+
+```bash
+$ nix-shell https://github.com/SMPYBandits/SMPyBandits/archive/master.tar.gz --run 'jupyter-notebook $EXAMPLE_NOTEBOOKS/Example_of_a_small_Multi-Player_Simulation__with_Centralized_Algorithms.ipynb' 
+```
 
 ----
 
@@ -194,11 +212,11 @@ If you want to contribute, please have a look to the [CONTRIBUTING.md](.github/C
 [![Maintenance](https://img.shields.io/badge/Maintained%3F-yes-green.svg)](https://GitHub.com/SMPyBandits/SMPyBandits/graphs/commit-activity)
 [![Ask Me Anything !](https://img.shields.io/badge/Ask%20me-anything-1abc9c.svg)](https://GitHub.com/Naereen/ama)
 [![Analytics](https://ga-beacon.appspot.com/UA-38514290-17/github.com/SMPyBandits/SMPyBandits/README.md?pixel)](https://GitHub.com/SMPyBandits/SMPyBandits/)
-[![![PyPI version](https://img.shields.io/pypi/v/smpybandits.svg)](https://pypi.org/project/SMPyBandits)](https://pypi.org/project/SMPyBandits)
-[![![PyPI implementation](https://img.shields.io/pypi/implementation/smpybandits.svg)](https://pypi.org/project/SMPyBandits)](https://pypi.org/project/SMPyBandits)
-[![![PyPI pyversions](https://img.shields.io/pypi/pyversions/smpybandits.svg?logo=python)](https://pypi.org/project/SMPyBandits)](https://pypi.org/project/SMPyBandits)
-[![![PyPI download](https://img.shields.io/pypi/dm/smpybandits.svg)](https://pypi.org/project/SMPyBandits)](https://pypi.org/project/SMPyBandits)
-[![![PyPI status](https://img.shields.io/pypi/status/smpybandits.svg)](https://pypi.org/project/SMPyBandits)](https://pypi.org/project/SMPyBandits)
+[![PyPI version](https://img.shields.io/pypi/v/smpybandits.svg)](https://pypi.org/project/SMPyBandits)
+[![PyPI implementation](https://img.shields.io/pypi/implementation/smpybandits.svg)](https://pypi.org/project/SMPyBandits)
+[![PyPI pyversions](https://img.shields.io/pypi/pyversions/smpybandits.svg?logo=python)](https://pypi.org/project/SMPyBandits)
+[![PyPI download](https://img.shields.io/pypi/dm/smpybandits.svg)](https://pypi.org/project/SMPyBandits)
+[![PyPI status](https://img.shields.io/pypi/status/smpybandits.svg)](https://pypi.org/project/SMPyBandits)
 [![Documentation Status](https://readthedocs.org/projects/smpybandits/badge/?version=latest)](https://SMPyBandits.ReadTheDocs.io/en/latest/?badge=latest)
 [![Build Status](https://travis-ci.org/SMPyBandits/SMPyBandits.svg?branch=master)](https://travis-ci.org/SMPyBandits/SMPyBandits)
 

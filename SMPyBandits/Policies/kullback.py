@@ -141,6 +141,8 @@ def klPoisson(x, y):
     return y - x + x * log(x / y)
 
 
+inf = float('+inf')
+
 @jit
 def klExp(x, y):
     r""" Kullback-Leibler divergence for exponential distributions. https://en.wikipedia.org/wiki/Exponential_distribution#Kullback.E2.80.93Leibler_divergence
@@ -175,7 +177,7 @@ def klExp(x, y):
     inf
     """
     if x <= 0 or y <= 0:
-        return float('+inf')
+        return inf
     else:
         x = max(x, eps)
         y = max(y, eps)
@@ -220,7 +222,7 @@ def klGamma(x, y, a=1):
     inf
     """
     if x <= 0 or y <= 0:
-        return float('+inf')
+        return inf
     else:
         x = max(x, eps)
         y = max(y, eps)
@@ -434,7 +436,7 @@ def klucbBern(x, d, precision=1e-6):
     >>> klucbBern(0.9, 0.9)  # doctest: +ELLIPSIS
     0.999995...
     """
-    upperbound = min(1., klucbGauss(x, d, sig2x=0.25))  # variance 1/4 for [0,1] bounded distributions
+    upperbound = min(1., klucbGauss(x, d, sig2x=0.25, precision=precision))  # variance 1/4 for [0,1] bounded distributions
     # upperbound = min(1., klucbPoisson(x, d))  # also safe, and better ?
     return klucb(x, d, klBern, upperbound, precision)
 
@@ -642,7 +644,7 @@ def kllcb(x, d, kl, lowerbound,
     while _count_iteration < max_iterations and value - l > precision:
         _count_iteration += 1
         m = (value + l) * 0.5
-        if kl(x, m) < d:
+        if kl(x, m) > d:
             l = m
         else:
             value = m
@@ -679,7 +681,7 @@ def kllcbBern(x, d, precision=1e-6):
     >>> kllcbBern(0.9, 0.9)  # doctest: +ELLIPSIS
     0.8999...
     """
-    lowerbound = max(0., kllcbGauss(x, d, sig2x=0.25))  # variance 1/4 for [0,1] bounded distributions
+    lowerbound = max(0., kllcbGauss(x, d, sig2x=0.25, precision=precision))  # variance 1/4 for [0,1] bounded distributions
     # lowerbound = max(0., kllcbPoisson(x, d))  # also safe, and better ?
     return kllcb(x, d, klBern, lowerbound, precision)
 

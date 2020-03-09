@@ -99,8 +99,37 @@ PROBLEMS = [1, 2]
 STR_PROBLEMS = str(getenv('PROBLEMS', '1, 2')).replace(' ', '')
 PROBLEMS = [int(p) for p in STR_PROBLEMS.split(',')]
 
+# XXX Pb -1 is purely stationary with 2 arms!
+if (-1) in PROBLEMS:
+    configuration["environment"] += [
+        {   # A simple piece-wise stationary problem
+            "arm_type": ARM_TYPE,
+            "params": {
+                "listOfMeans": [
+                    [0.3, 0.9],
+                ],
+                "changePoints": [0],
+            }
+        },
+    ]
+
+# XXX Pb -1 is purely stationary with K=9 arms!
+if (-2) in PROBLEMS:
+    configuration["environment"] += [
+        {   # A simple piece-wise stationary problem
+            "arm_type": ARM_TYPE,
+            "params": {
+                "listOfMeans": [
+                    [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
+                ],
+                "changePoints": [0],
+            }
+        },
+    ]
+
+
 # XXX Pb 0 changes are only on one arm at a time, only 2 arms
-if 0 in PROBLEMS:  # WARNING remove this "False and" to use this problem
+if 0 in PROBLEMS:
     configuration["environment"] += [
         {   # A simple piece-wise stationary problem
             "arm_type": ARM_TYPE,
@@ -125,7 +154,7 @@ if 0 in PROBLEMS:  # WARNING remove this "False and" to use this problem
     ]
 
 # XXX Pb 1 changes are only on one arm at a time
-if 1 in PROBLEMS:  # WARNING remove this "False and" to use this problem
+if 1 in PROBLEMS:
     configuration["environment"] += [
         {   # A simple piece-wise stationary problem
             "arm_type": ARM_TYPE,
@@ -150,7 +179,7 @@ if 1 in PROBLEMS:  # WARNING remove this "False and" to use this problem
     ]
 
 # XXX Pb 2 changes are on all or almost arms at a time
-if 2 in PROBLEMS:  # WARNING remove this "False and" to use this problem
+if 2 in PROBLEMS:
     configuration["environment"] += [
         {   # A simple piece-wise stationary problem
             "arm_type": ARM_TYPE,
@@ -175,7 +204,7 @@ if 2 in PROBLEMS:  # WARNING remove this "False and" to use this problem
     ]
 
 # XXX Pb 3 changes are on all or almost arms at a time, from https://subhojyoti.github.io/pdf/aistats_2019.pdf
-if 3 in PROBLEMS:  # WARNING remove this "False and" to use this problem
+if 3 in PROBLEMS:
     configuration["environment"] += [
         {   # A simple piece-wise stationary problem
             "arm_type": ARM_TYPE,
@@ -222,7 +251,7 @@ if 4 in PROBLEMS:
     ]
 
 # XXX Pb 5 Example from the Yahoo! dataset, from article "Nearly Optimal Adaptive Procedure with Change Detection for Piecewise-Stationary Bandit" (M-UCB) https://arxiv.org/abs/1802.03692
-if 5 in PROBLEMS:  # WARNING remove this "False and" to use this problem
+if 5 in PROBLEMS:
     configuration["environment"] = [
         {   # A very hard piece-wise stationary problem, with 6 arms and 9 change points
             "arm_type": ARM_TYPE,
@@ -245,7 +274,7 @@ if 5 in PROBLEMS:  # WARNING remove this "False and" to use this problem
     ]
 
 # XXX Pb 6 Another example from the Yahoo! dataset, from article "On Abruptly-Changing and Slowly-Varying Multiarmed Bandit Problems" (SW-UCB#) https://arxiv.org/abs/1802.08380
-if 6 in PROBLEMS:  # WARNING remove this "False and" to use this problem
+if 6 in PROBLEMS:
     configuration["environment"] = [
         {   # A very hard piece-wise stationary problem, with 5 arms and 9 change points
             "arm_type": ARM_TYPE,
@@ -392,7 +421,7 @@ NB_BREAK_POINTS = max([len(env["params"]["changePoints"]) - (1 if 0 in env["para
 configuration["nb_break_points"] = NB_BREAK_POINTS
 
 
-# if False:  # WARNING remove this "False and" to use this problem
+# if False:
 #     configuration["environment"] = [
 #         {   # A non stationary problem: every step of the same repetition use a different mean vector!
 #             "arm_type": ARM_TYPE,
@@ -416,7 +445,7 @@ configuration["nb_break_points"] = NB_BREAK_POINTS
 #         },
 #     ]
 
-# if False:  # WARNING remove this "False and" to use this problem
+# if False:
 #     configuration["environment"] = [  # XXX Bernoulli arms
 #         {   # A non stationary problem: every step of the same repetition use a different mean vector!
 #             "arm_type": ARM_TYPE,
@@ -434,7 +463,7 @@ configuration["nb_break_points"] = NB_BREAK_POINTS
 #     ]
 
 
-# if False:  # WARNING remove this "False and" to use this problem
+# if False:
 #     configuration["environment"] = [  # XXX Bernoulli arms
 #         {   # A non stationary problem: every step of the same repetition use a different mean vector!
 #             "arm_type": ARM_TYPE,
@@ -483,7 +512,8 @@ PER_ARM_RESTART = [
     # False, # Global restart XXX seems more efficient? (at least more memory efficient!)
 ]
 
-MIN_NUMBER_OF_OBSERVATION_BETWEEN_CHANGE_POINT = np.min(np.diff(CHANGE_POINTS)) // (2 * NB_ARMS)
+
+MIN_NUMBER_OF_OBSERVATION_BETWEEN_CHANGE_POINT = np.min(np.diff(CHANGE_POINTS)) // (2 * NB_ARMS) if len(CHANGE_POINTS) > 1 else HORIZON
 
 UPSILON_T = max(1, NB_BREAK_POINTS)
 
@@ -495,7 +525,7 @@ print("\nUsing Upsilon_T = {} break-points (time when at least one arm changes),
 
 DELTA_for_MUCB = 0.1
 EPSILON_for_CUSUM = 0.1
-if len(PROBLEMS) == 1: # and set(PROBLEMS) <= {1,2,3,4,5,6}:
+if len(CHANGE_POINTS) > 1 and len(PROBLEMS) == 1: # and set(PROBLEMS) <= {1,2,3,4,5,6}:
     print("For this problem, we compute the Delta^change and Delta^opt...")  # DEBUG
     min_change_on_mean = min(delta for delta in [min([delta for delta in np.abs(np.diff(np.array(LIST_OF_MEANS)[:, i])) if delta > 0 ]) for i in range(np.shape(LIST_OF_MEANS)[1])] if delta > 0)
     print("min_change_on_mean =", min_change_on_mean)  # DEBUG
@@ -557,10 +587,10 @@ configuration.update({
     # #     },
     # # ] +
     [  # XXX Regular stochastic bandits algorithms!
-        # # { "archtype": Uniform, "params": { } },
+        # { "archtype": Uniform, "params": { } },
         # # { "archtype": EmpiricalMeans, "params": { } },
         # # { "archtype": UCBalpha, "params": { "alpha": 1, } },
-        # { "archtype": UCB, "params": { } },
+        { "archtype": UCB, "params": { } },
         # # { "archtype": SWR_UCBalpha, "params": { "alpha": 1, } },  # WARNING experimental!
         # { "archtype": BESA, "params": { "horizon": HORIZON, "non_binary": True, } },
         # { "archtype": BayesUCB, "params": { "posterior": Beta, } },
@@ -581,9 +611,9 @@ configuration.update({
             # "full_restart_when_refresh": full_restart_when_refresh,
         } }
         for policy in [
-            # UCB,  # XXX comment to only test klUCB
+            UCB,  # XXX comment to only test klUCB
             klUCB,
-            # Thompson,  # XXX comment to only test klUCB
+            Thompson,  # XXX comment to only test klUCB
             # Exp3PlusPlus,  # XXX comment to only test klUCB
         ]
         # for per_arm_restart in [True, False]
@@ -608,25 +638,25 @@ configuration.update({
         # for gamma0 in [100, 10, 1, 0.1, 0.01, 0.001]  # try different values for alpha, but using the formula, just a constant scaling
         # # for gamma0 in [10, 1, 0.01]  # try different values for alpha, but using the formula, just a constant scaling
     ] +
-    # # The Exp3R algorithm works reasonably well
-    # [
-    #     { "archtype": Exp3R, "params": { "horizon": HORIZON, } }
-    # ] +
+    # The Exp3R algorithm works reasonably well
+    [
+        { "archtype": Exp3R, "params": { "horizon": HORIZON, } }
+    ] +
     # # # XXX The Exp3RPlusPlus variant of Exp3R algorithm works also reasonably well
     # # [
     # #     { "archtype": Exp3RPlusPlus, "params": { "horizon": HORIZON, } }
     # # ] +
-    # [
-    #     # --- # Different versions of the discounted UCB algorithm
-    #     { "archtype": DiscountedklUCB, "params": {
-    #         "gamma": gamma,
-    #         # "alpha": alpha,
-    #         # "useRealDiscount": useRealDiscount,
-    #     } }
-    #     for gamma in GAMMAS
-    #     # for alpha in ALPHAS
-    #     # for useRealDiscount in [True, False]
-    # ] +
+    [
+        # --- # Different versions of the discounted UCB algorithm
+        { "archtype": DiscountedklUCB, "params": {
+            "gamma": gamma,
+            # "alpha": alpha,
+            # "useRealDiscount": useRealDiscount,
+        } }
+        for gamma in GAMMAS
+        # for alpha in ALPHAS
+        # for useRealDiscount in [True, False]
+    ] +
     # # [
     # #     # --- # XXX experimental discounted UCB algorithm, knowing the horizon
     # #     { "archtype": DiscountedklUCBPlus, "params": { "max_nb_random_events": NB_BREAK_POINTS, "horizon": HORIZON, } }
@@ -655,11 +685,11 @@ configuration.update({
     # #     { "archtype": SWUCBPlus, "params": { "horizon": HORIZON, "alpha": alpha, } }
     # #     for alpha in ALPHAS
     # # ] +
-    # [
-    #     # --- # Different versions of the sliding window klUCB algorithm
-    #     { "archtype": SWklUCB, "params": { "tau": tau, }, "change_label": "SW-klUCB" }
-    #     for tau in TAUS
-    # ] +
+    [
+        # --- # Different versions of the sliding window klUCB algorithm
+        { "archtype": SWklUCB, "params": { "tau": tau, }, "change_label": "SW-klUCB" }
+        for tau in TAUS
+    ] +
     [  # XXX DiscountedThompson works REALLY well!
         {
             "archtype": DiscountedThompson,
@@ -734,7 +764,7 @@ configuration.update({
             # UCB,  # XXX comment to only test klUCB
             klUCB,
         ]
-        for use_localization in [True, False]
+        for use_localization in [True]
         # for lazy_detect_change_only_x_steps in [1, 2, 5]
         # for lazy_detect_change_only_x_steps in [1]
         for lazy_detect_change_only_x_steps in ([20] if HORIZON <= 20000 else ([35] if HORIZON <= 100000 else [50]))
@@ -756,30 +786,34 @@ configuration.update({
     # # #     # for lazy_try_value_s_only_x_steps in [1, 2, 5]  # XXX uncomment to use default value
     # # # ] +
     # # # XXX Test GaussianGLR_IndexPolicy
-    # # [
-    # #     { "archtype": archtype, "params": {
-    # #         "horizon": HORIZON,
-    # #         "policy": policy,
-    # #         "per_arm_restart": per_arm_restart,
-    # #         "max_nb_random_events": NB_BREAK_POINTS,
-    # #         "lazy_detect_change_only_x_steps": lazy_detect_change_only_x_steps,
-    # #         "lazy_try_value_s_only_x_steps": lazy_try_value_s_only_x_steps,
-    # #     } }
-    # #     for archtype in [
-    # #         GaussianGLR_IndexPolicy,    # OK GaussianGLR_IndexPolicy is very much like Bernoulli GLR
-    # #         GaussianGLR_IndexPolicy_WithTracking,    # OK GaussianGLR_IndexPolicy_WithTracking is very much like Gaussian GLR and is more efficient
-    # #         GaussianGLR_IndexPolicy_WithDeterministicExploration,    # OK GaussianGLR_IndexPolicy_WithDeterministicExploration is very much like Gaussian GLR and is more efficient
-    # #         SubGaussianGLR_IndexPolicy, # OK SubGaussianGLR_IndexPolicy is very much like Gaussian GLR
-    # #     ]
-    # #     for policy in [
-    # #         # UCB,  # XXX comment to only test klUCB
-    # #         klUCB,
-    # #     ]
-    # #     for per_arm_restart in PER_ARM_RESTART
-    # #     # for lazy_detect_change_only_x_steps in [50] #+ [2, 10]  # XXX uncomment to use default value
-    # #     # for lazy_try_value_s_only_x_steps in [50] #+ [2, 10]  # XXX uncomment to use default value
-    # #     for lazy_detect_change_only_x_steps, lazy_try_value_s_only_x_steps in ([(10, 10)] if HORIZON <= 20000 else ([(20, 20)] if HORIZON <= 100000 else [(50, 50)]))
-    # # ] +
+    # [
+    #     { "archtype": archtype, "params": {
+    #         "horizon": HORIZON,
+    #         "policy": policy,
+    #         "per_arm_restart": per_arm_restart,
+    #         "max_nb_random_events": NB_BREAK_POINTS,
+    #         "lazy_detect_change_only_x_steps": lazy_detect_change_only_x_steps,
+    #         "lazy_try_value_s_only_x_steps": lazy_try_value_s_only_x_steps,
+    #     },  "change_label": archname
+    #     }
+    #     for archtype, archname in [
+    #         # (GaussianGLR_IndexPolicy, "random expl."),    # OK GaussianGLR_IndexPolicy is very much like Bernoulli GLR
+    #         # (GaussianGLR_IndexPolicy_WithTracking, "tracking"),    # OK GaussianGLR_IndexPolicy_WithTracking is very much like Gaussian GLR and is more efficient
+    #         (GaussianGLR_IndexPolicy_WithDeterministicExploration, "Gaussian-GLR"),    # OK GaussianGLR_IndexPolicy_WithDeterministicExploration is very much like Gaussian GLR and is more efficient
+    #         (SubGaussianGLR_IndexPolicy, "sub-Gaussian GLR"), # OK SubGaussianGLR_IndexPolicy is very much like Gaussian GLR
+    #         # (OurGaussianGLR_IndexPolicy, "random expl."),    # OK OurGaussianGLR_IndexPolicy is very much like Bernoulli GLR
+    #         # (OurGaussianGLR_IndexPolicy_WithTracking, "tracking"),    # OK OurGaussianGLR_IndexPolicy_WithTracking is very much like Gaussian GLR and is more efficient
+    #         (OurGaussianGLR_IndexPolicy_WithDeterministicExploration, "Our Gaussian-GLR"),    # OK OurGaussianGLR_IndexPolicy_WithDeterministicExploration is very much like Gaussian GLR and is more efficient
+    #     ]
+    #     for policy in [
+    #         # UCB,  # XXX comment to only test klUCB
+    #         klUCB,
+    #     ]
+    #     for per_arm_restart in PER_ARM_RESTART
+    #     # for lazy_detect_change_only_x_steps in [50] #+ [2, 10]  # XXX uncomment to use default value
+    #     # for lazy_try_value_s_only_x_steps in [50] #+ [2, 10]  # XXX uncomment to use default value
+    #     for lazy_detect_change_only_x_steps, lazy_try_value_s_only_x_steps in ([(10, 10)] if HORIZON <= 20000 else ([(20, 20)] if HORIZON <= 100000 else [(50, 50)]))
+    # ] +
     # XXX Test BernoulliGLR_IndexPolicy
     [
         { "archtype": archtype, "params": {
@@ -794,12 +828,14 @@ configuration.update({
             "lazy_try_value_s_only_x_steps": lazy_try_value_s_only_x_steps,
             # "variant": variant,
             "use_localization": use_localization,
+            "use_increasing_alpha": use_increasing_alpha,
         },
         "change_label": r"GLR-klUCB({})".format(", ".join(s for s in [
             "Local" if per_arm_restart else "Global",
             "Localization" if use_localization else "",
             archname,
             # "threshold #{}".format(variant),
+            r"increasing $\alpha_t$" if use_increasing_alpha else "",
             # r"\delta 1" if delta == DELTA_1 else r"\delta 2",
             # r"$\delta={:.3g}$".format(delta),
             # r"$\alpha_0={:.3g}$".format(alpha0),
@@ -834,7 +870,7 @@ configuration.update({
             [DELTA_LOCAL, DELTA_GLOBAL],
             [ALPHA_LOCAL, ALPHA_GLOBAL],
         )
-        for use_localization in [True, False]
+        for use_localization in [True]
         # for delta in [DELTA_1] # + [DELTA_2]  # XXX experimental!
         # for alpha0 in [ALPHA_1]  # XXX experimental!
         for mult_alpha0 in [1]  # comment from the + to use default parameter
@@ -846,7 +882,16 @@ configuration.update({
         # for lazy_detect_change_only_x_steps, lazy_try_value_s_only_x_steps in [(1, 1)]
         for lazy_detect_change_only_x_steps, lazy_try_value_s_only_x_steps in ([(10, 10)] if HORIZON <= 20000 else ([(20, 20)] if HORIZON <= 100000 else [(50, 50)]))
         # for variant in [None, 1, 2, 3]  # XXX variant for the threshold function...
+        for use_increasing_alpha in [False, True]  # FIXME try this!
     ] +
+    # [  # DONE test the AdSwitch policy and its corrected version
+    #     {
+    #         "archtype": AdSwitchNew,
+    #         "params": { "horizon": HORIZON, "C1": C1,},
+    #         "change_label": "AdSwitch-New",
+    #     }
+    #     for C1 in [1]  #, 10, 0.1]  # WARNING don't test too many parameters!
+    # ] +
     []
 })
 

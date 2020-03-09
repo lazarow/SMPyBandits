@@ -595,15 +595,15 @@ class Evaluator(object):
                 if normalizedRegret:
                     Y /= np.log(X + 2)   # XXX prevent /0
             ymin = min(ymin, np.min(Y))
-            lw = 4 if ('$N=' in policy.__cachedstr__ or 'Aggr' in policy.__cachedstr__ or 'CORRAL' in policy.__cachedstr__ or 'LearnExp' in policy.__cachedstr__ or 'Exp4' in policy.__cachedstr__) else 2
+            lw = 10 if ('$N=' in policy.__cachedstr__ or 'Aggr' in policy.__cachedstr__ or 'CORRAL' in policy.__cachedstr__ or 'LearnExp' in policy.__cachedstr__ or 'Exp4' in policy.__cachedstr__) else 8
             if len(self.policies) > 8: lw -= 1
             if semilogx or loglog:
                 # FIXED for semilogx plots, truncate to only show t >= 100
                 X_to_plot_here = X[X >= 100]
                 Y_to_plot_here = Y[X >= 100]
-                plot_method(X_to_plot_here[::self.delta_t_plot], Y_to_plot_here[::self.delta_t_plot], label=policy.__cachedstr__, color=colors[i], marker=markers[i], markevery=(i / 50., 0.1), lw=lw, markersize=6)
+                plot_method(X_to_plot_here[::self.delta_t_plot], Y_to_plot_here[::self.delta_t_plot], label=policy.__cachedstr__, color=colors[i], marker=markers[i], markevery=(i / 50., 0.1), lw=lw, ms=int(1.5*lw))
             else:
-                plot_method(X[::self.delta_t_plot], Y[::self.delta_t_plot], label=policy.__cachedstr__, color=colors[i], marker=markers[i], markevery=(i / 50., 0.1), lw=lw, markersize=6)
+                plot_method(X[::self.delta_t_plot], Y[::self.delta_t_plot], label=policy.__cachedstr__, color=colors[i], marker=markers[i], markevery=(i / 50., 0.1), lw=lw, ms=int(1.5*lw))
             if semilogx or loglog:  # Manual fix for issue https://github.com/SMPyBandits/SMPyBandits/issues/38
                 plt.xscale('log')
             if semilogy or loglog:  # Manual fix for issue https://github.com/SMPyBandits/SMPyBandits/issues/38
@@ -707,9 +707,9 @@ class Evaluator(object):
         X = self._times[2:]
         for i, policy in enumerate(self.policies):
             Y = self.getBestArmPulls(i, envId)[2:]
-            lw = 4 if ('$N=' in policy.__cachedstr__ or 'Aggr' in policy.__cachedstr__ or 'CORRAL' in policy.__cachedstr__ or 'LearnExp' in policy.__cachedstr__ or 'Exp4' in policy.__cachedstr__) else 2
+            lw = 10 if ('$N=' in policy.__cachedstr__ or 'Aggr' in policy.__cachedstr__ or 'CORRAL' in policy.__cachedstr__ or 'LearnExp' in policy.__cachedstr__ or 'Exp4' in policy.__cachedstr__) else 8
             if len(self.policies) > 8: lw -= 1
-            plt.plot(X[::self.delta_t_plot], Y[::self.delta_t_plot], label=policy.__cachedstr__, color=colors[i], marker=markers[i], markevery=(i / 50., 0.1), lw=lw, markersize=6)
+            plt.plot(X[::self.delta_t_plot], Y[::self.delta_t_plot], label=policy.__cachedstr__, color=colors[i], marker=markers[i], markevery=(i / 50., 0.1), lw=lw, ms=int(1.5*lw))
         legend()
         self._xlabel(envId, r"Krok czasowy $t = 1...H$", labelpad=15)
         add_percent_formatter("yaxis", 1.0)
@@ -780,11 +780,10 @@ class Evaluator(object):
         labels = [ labels[i] for i in index_of_sorting ]
         all_memories = [ np.asarray(all_memories[i]) / float(base) for i in index_of_sorting ]
         fig = plt.figure()
-        violin_or_box_plot(data=all_memories, labels=labels, boxplot=True)
-        plt.xlabel("");
-        #plt.xlabel("Strategie wyboru{}".format(self.signature))
-        ylabel = "Uśrednione zużycie pamięci (w {})".format(unit)
-        plt.ylabel(ylabel, labelpad=15)
+        violin_or_box_plot(data=all_memories, labels=labels, boxplot=self.use_box_plot)
+        plt.xlabel("Bandit algorithms{}".format(self.signature))
+        ylabel = "Memory consumption (in {}), for {} repetitions".format(unit, self.repetitions)
+        plt.ylabel(ylabel)
         adjust_xticks_subplots(ylabel=ylabel, labels=labels)
         plt.title("")
         #plt.title("Memory consumption for different bandit algorithms, horizon $T={}$, averaged ${}$ times\n${}$ arms{}: {}".format(self.horizon, self.repetitions, self.envs[envId].nbArms, self.envs[envId].str_sparsity(), self.envs[envId].reprarms(1, latex=True)))
@@ -815,7 +814,7 @@ class Evaluator(object):
         labels = [ labels[i] for i in index_of_sorting ]
         all_number_of_cp_detections = [ np.asarray(all_number_of_cp_detections[i]) for i in index_of_sorting ]
         fig = plt.figure()
-        violin_or_box_plot(data=all_number_of_cp_detections, labels=labels, boxplot=True)
+        violin_or_box_plot(data=all_number_of_cp_detections, labels=labels, boxplot=self.use_box_plot)
         plt.xlabel("Bandit algorithms{}".format(self.signature))
         ylabel = "Number of detected change-points, for {} repetitions".format(self.repetitions)
         plt.ylabel(ylabel)
