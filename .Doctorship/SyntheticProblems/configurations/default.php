@@ -8,4 +8,5 @@ return [
     'plot.template.filepath' => __DIR__ . '/../templates/plot_template.tex',
     'tables.template.filepath' => __DIR__ . '/../templates/tables_template.tex',
     'pdflatex' => 'pdflatex',
+    'nof.jobs' => 4
 ];

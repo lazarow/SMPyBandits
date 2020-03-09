@@ -35,7 +35,7 @@ for ($i = 0; $i < count($queue); ++$i) {
     file_put_contents($experimentDir . '/configuration_experiment.py', strtr($configurationTemplate, [
         '{{HORIZON}}' => $h,
         '{{REPETITIONS}}' => $experiment['repetitions'],
-        '{{N_JOBS}}' => 8,
+        '{{N_JOBS}}' => $configuration['nof.jobs'],
         '{{ARMS}}' => implode(', ', $experiment['arms']),
         '{{POLICY}}' => '{"archtype": ' . $experiment['policy']['archtype'] . ', "params": {' . $params . '}}'
     ]));
