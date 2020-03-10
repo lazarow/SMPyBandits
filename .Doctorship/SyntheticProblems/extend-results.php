@@ -13,9 +13,11 @@ foreach ($experiment['arms'] as $arms) {
     foreach ($experiment['policies'] as $idx => $policy) {
         $md5 = md5(json_encode($policy) . json_encode($arms) . $experiment['repetitions']);
         $experimentDir = $configuration['output.dir'] . '/experiments/' . $md5;
-        if (file_exists($experimentDir . '/raw_data.json') === false) {
+        if (file_exists($experimentDir . '/raw_data.json.tar.gz') === false) { // lloking for compressed file
             exit('[!] The experiment does not have raw data for policy: ' . $policy['archtype'] . ' and arms: ' . implode('; ', $arms) . '.' . PHP_EOL);
         }
+        // Decompression of RAW data
+        shell_exec('tar -zcvf "' . $experimentDir . '/raw_data.json.tar.gz"');
         $results = json_decode(file_get_contents($experimentDir . '/results.json'), true);
         if (
             isset($results['regret'])
@@ -29,6 +31,7 @@ foreach ($experiment['arms'] as $arms) {
         foreach (json_decode(file_get_contents($experimentDir . '/raw_data.json'), true)['datasets'] as $dataset) {
             $data[$dataset['alias'][0]] = $dataset['value'][0];
         }
+        unlink($experimentDir . '/raw_data.json'); // removing decompressed file
         // Fix regrets
         $results['regret'] = [
             'min' => min($data['/env_0/regrets']),

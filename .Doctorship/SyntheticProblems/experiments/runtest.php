@@ -2,10 +2,8 @@
 return [
     'repetitions' => 100,
     'arms' => [
-        // Auer
         [0.9, 0.6],
-        [0.9, 0.8],
-        [0.55, 0.45]
+        array_merge([0.5, 0.48], array_fill(0, 18, 0.37))
     ],
     'policies' => [
         /**

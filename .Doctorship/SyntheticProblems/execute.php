@@ -49,6 +49,9 @@ for ($i = 0; $i < count($queue); ++$i) {
     $plotsDir = __DIR__ . '/plots/SP__K' . count($experiment['arms']) . '_T' . $h . '_N' . $experiment['repetitions'] . '__1_algos';
     foreach (glob($plotsDir . '/*.hdf5') as $filename) {
         shell_exec($configuration['h5tojson'] . ' "' . $filename . '" > "' . $experimentDir . '/raw_data.json"');
+        // Compression of RAW data
+        shell_exec('tar -zcvf "' . $experimentDir . '/raw_data.json.tar.gz"' . $experimentDir . '/raw_data.json"');
+        unlink($experimentDir . '/raw_data.json');
     }
     // Removing SMPyBandits plots folder
     if (file_exists($plotsDir)) {
