@@ -7,3 +7,4 @@ php extend-results.php -e $experiment -c $configuration
 php generate-standings.php -e $experiment -c $configuration --force
 php generate-plots.php -e $experiment -c $configuration --force
 php print.php -e $experiment -c $configuration
+php notify.php -e $experiment -c $configuration
