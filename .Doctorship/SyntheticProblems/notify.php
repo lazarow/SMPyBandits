@@ -16,3 +16,4 @@ $success = mail(
 if (! $success) {
     echo error_get_last()['message'];
 }
+echo '[i] The notifications have been sent.' . PHP_EOL;
