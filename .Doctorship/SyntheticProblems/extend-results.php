@@ -26,7 +26,7 @@ foreach ($experiment['arms'] as $arms) {
             continue;
         }
         // Decompression of RAW data
-        shell_exec('tar -zcvf "' . $experimentDir . '/raw_data.json.tar.gz"');
+        shell_exec('tar -zxvf "' . $experimentDir . '/raw_data.json.tar.gz"');
         $data = [];
         foreach (json_decode(file_get_contents($experimentDir . '/raw_data.json'), true)['datasets'] as $dataset) {
             $data[$dataset['alias'][0]] = $dataset['value'][0];
