@@ -1,10 +1,14 @@
 <?php
 $policies = [];
-foreach (range(0.1, 4, 0.1) as $alpha) {
-    $policies[] = ['archtype' => 'UCBalpha', 'params' => ['alpha' => $alpha]];
+foreach ([0.1, 0.05, 0.03, 0.01, 0.001] as $alpha) {
+    foreach ([2.58, 2.33, 1.96, 1.64, 1.28] as $z) {
+        foreach (range(0.1, 4, 0.1) as $beta) {
+            $policies[] = ['archtype' => 'TSPolP', 'params' => ['alpha' => $alpha, 'beta' => $beta, 'z' => $z]];
+        }
+    }
 }
 return [
-    'repetitions' => 100,
+    'repetitions' => 1000,
     'arms' => [
         // Auer
         [0.9, 0.6],
