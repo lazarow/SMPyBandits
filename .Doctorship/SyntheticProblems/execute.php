@@ -66,7 +66,14 @@ for ($i = 0; $i < count($queue); ++$i) {
         $experiment['regret']['max'] = (float) $regretMatches[6][$idx];
         $experiment['regret']['st.dev'] = (float) $regretMatches[7][$idx];
     }
-    $timePattern = "/For policy #[0-9]+ called '(.*)' \.\.\.\s+([0-9\.-e\+]+)\s?m?s? [±Â]+? ([0-9\.-e]+)\s?m?s?/mi";
+    $timePattern = "/For policy #[0-9]+ called '(.*)' \.\.\.\s+([0-9\.-e\+]+)\ ms [±Â]+? ([0-9\.-e]+)\ ms/mi";
+    $timeMatches = [];
+    preg_match_all($timePattern, $smpybanditsOutput, $timeMatches);
+    foreach (array_keys($timeMatches[0]) as $idx) {
+        $experiment['time']['mean'] = (float) $timeMatches[2][$idx] * 1000;
+        $experiment['time']['st.dev'] = (float) $timeMatches[3][$idx] * 1000;
+    }
+    $timePattern = "/For policy #[0-9]+ called '(.*)' \.\.\.\s+([0-9\.-e\+]+) [±Â]+? ([0-9\.-e]+)/mi";
     $timeMatches = [];
     preg_match_all($timePattern, $smpybanditsOutput, $timeMatches);
     foreach (array_keys($timeMatches[0]) as $idx) {
