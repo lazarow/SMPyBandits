@@ -13,7 +13,7 @@ foreach ($experiment['arms'] as $arms) {
     foreach ($experiment['policies'] as $idx => $policy) {
         $md5 = md5(json_encode($policy) . json_encode($arms) . $experiment['repetitions']);
         $experimentDir = $configuration['output.dir'] . '/experiments/' . $md5;
-        if (file_exists($experimentDir . '/raw_data.json.tar.gz') === false) { // lloking for compressed file
+        if (file_exists($experimentDir . '/raw_data.json.tar.gz') === false) { // looking for compressed file
             exit('[!] The experiment does not have raw data for policy: ' . $policy['archtype'] . ' and arms: ' . implode('; ', $arms) . '.' . PHP_EOL);
         }
         // Decompression of RAW data
