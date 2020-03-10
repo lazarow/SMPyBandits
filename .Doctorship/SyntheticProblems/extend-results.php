@@ -16,8 +16,6 @@ foreach ($experiment['arms'] as $arms) {
         if (file_exists($experimentDir . '/raw_data.json.tar.gz') === false) { // looking for compressed file
             exit('[!] The experiment does not have raw data for policy: ' . $policy['archtype'] . ' and arms: ' . implode('; ', $arms) . '.' . PHP_EOL);
         }
-        // Decompression of RAW data
-        shell_exec('tar -zcvf "' . $experimentDir . '/raw_data.json.tar.gz"');
         $results = json_decode(file_get_contents($experimentDir . '/results.json'), true);
         if (
             isset($results['regret'])
@@ -27,6 +25,8 @@ foreach ($experiment['arms'] as $arms) {
         ) {
             continue;
         }
+        // Decompression of RAW data
+        shell_exec('tar -zcvf "' . $experimentDir . '/raw_data.json.tar.gz"');
         $data = [];
         foreach (json_decode(file_get_contents($experimentDir . '/raw_data.json'), true)['datasets'] as $dataset) {
             $data[$dataset['alias'][0]] = $dataset['value'][0];
